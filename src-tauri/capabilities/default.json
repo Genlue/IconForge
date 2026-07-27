@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedoc/tauri-conf-schema/refs/heads/main/schema.json",
+  "identifier": "default",
+  "description": "Default capabilities for IconForge",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:window:allow-close",
+    "core:window:allow-set-size",
+    "core:window:allow-set-title",
+    "core:event:default",
+    "core:event:allow-listen",
+    "dialog:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "dialog:allow-message",
+    "dialog:allow-ask"
+  ]
+}
