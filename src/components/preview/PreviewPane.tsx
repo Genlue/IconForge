@@ -56,7 +56,9 @@ export function PreviewPane(): JSX.Element {
             )}
           </>
         ) : (
-          <EmptyDropZone dragActive={dragActive} />
+          <div className="relative z-10">
+            <EmptyDropZone dragActive={dragActive} />
+          </div>
         )}
       </div>
       {selectedItem && (

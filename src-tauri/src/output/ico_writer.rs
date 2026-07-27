@@ -10,14 +10,10 @@ pub fn encode_ico(images: &[(u32, RgbaImage)]) -> Result<Vec<u8>, AppError> {
 
     for (size, image) in images {
         let icon = ico::IconImage::from_rgba_data(*size, *size, image.clone().into_raw());
-        // Windows shell consumers are most compatible with DIB data for the
-        // classic small icon sizes. Keep PNG for larger, detail-heavy frames.
-        let entry = if *size <= 64 {
-            ico::IconDirEntry::encode_as_bmp(&icon)
-        } else {
-            ico::IconDirEntry::encode_as_png(&icon)
-        }
-        .map_err(AppError::ico_encode)?;
+        // Use classic DIB frames for every size. Windows shell and shortcut
+        // consumers apply consistent sizing to these frames, while PNG ICO
+        // frames can receive an extra platform-dependent safety margin.
+        let entry = ico::IconDirEntry::encode_as_bmp(&icon).map_err(AppError::ico_encode)?;
         dir.add_entry(entry);
     }
     let mut cursor = Cursor::new(Vec::new());

@@ -13,6 +13,10 @@ pub fn render_foreground(
     let size = 256usize;
     let mut result = LinearPremultipliedImage::transparent(256, 256);
     let content = alpha_content_bounds(source);
+    // Normalize every source to its visible alpha bounds before fitting. PE
+    // and shell extraction often returns different transparent canvases for
+    // otherwise identical icons; using the same bounds makes desktop sizing
+    // consistent across imported file types.
     let content_width = (content.max_x - content.min_x + 1) as f32;
     let content_height = (content.max_y - content.min_y + 1) as f32;
     let shape_size = 256.0 - 2.0 * config.canvas_inset;

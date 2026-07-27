@@ -53,15 +53,11 @@ mod tests {
             );
         }
 
-        // Small entries use the BITMAPINFOHEADER signature (40 bytes), while
-        // larger entries start with the PNG signature.
+        // Every frame uses the classic BITMAPINFOHEADER encoding for stable
+        // Windows shell sizing across desktop and shortcut views.
         for entry in dir.entries() {
             let encoded = entry.data();
-            if entry.width() <= 64 {
-                assert_eq!(&encoded[..4], &40u32.to_le_bytes());
-            } else {
-                assert_eq!(&encoded[..8], b"\x89PNG\r\n\x1a\n");
-            }
+            assert_eq!(&encoded[..4], &40u32.to_le_bytes());
         }
     }
 }
