@@ -1,8 +1,32 @@
+import { useIconForgeStore } from "../../store/useIconForgeStore";
+import { Checkerboard } from "./Checkerboard";
+import { EmptyDropZone } from "./EmptyDropZone";
+import { IconPreview } from "./IconPreview";
+
 export function PreviewPane(): JSX.Element {
+  const items = useIconForgeStore((s) => s.items);
+  const selectedId = useIconForgeStore((s) => s.selectedItemId);
+  const renderConfig = useIconForgeStore((s) => s.renderConfig);
+  const dragActive = useIconForgeStore((s) => s.dragActive);
+
+  const selectedItem = items.find((i) => i.id === selectedId) ?? items[0] ?? null;
+  const previewSizePx = Math.min(Math.max(256, 420), 420); // clamp 256-420
+
   return (
-    <div className="flex h-full items-center justify-center p-8">
-      <div className="glass-panel flex aspect-square max-h-[420px] min-h-[256px] w-full max-w-[420px] items-center justify-center">
-        <span className="text-[var(--text-secondary)]">拖入文件开始</span>
+    <div className="relative flex h-full items-center justify-center p-8">
+      <div className="glass-panel relative flex aspect-square items-center justify-center overflow-hidden"
+        style={{
+          width: previewSizePx,
+          maxWidth: "100%",
+          maxHeight: "100%",
+        }}
+      >
+        <Checkerboard />
+        {selectedItem ? (
+          <IconPreview item={selectedItem} config={renderConfig} sizePx={previewSizePx} />
+        ) : (
+          <EmptyDropZone dragActive={dragActive} />
+        )}
       </div>
     </div>
   );
