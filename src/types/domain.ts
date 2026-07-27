@@ -67,6 +67,13 @@ export interface InputItem {
   warnings: string[];
 }
 
+export interface UpscaleConfig {
+  enabled: boolean;
+  scale: number;
+  denoise: number;
+  model: string;
+}
+
 export interface PresetDefinition {
   id: string;
   name: string;

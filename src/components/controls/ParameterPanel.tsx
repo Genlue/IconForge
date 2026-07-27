@@ -6,6 +6,7 @@ import { ShapeSection } from "./ShapeSection";
 import { BackplateSection } from "./BackplateSection";
 import { ShadowSection } from "./ShadowSection";
 import { StrokeSection } from "./StrokeSection";
+import { UpscaleSection } from "./UpscaleSection";
 import { ExportActions } from "../export/ExportActions";
 
 export function ParameterPanel(): JSX.Element {
@@ -15,6 +16,8 @@ export function ParameterPanel(): JSX.Element {
   const updateRenderConfig = useIconForgeStore((s) => s.updateRenderConfig);
   const updateOuterShadow = useIconForgeStore((s) => s.updateOuterShadow);
   const updateStroke = useIconForgeStore((s) => s.updateStroke);
+  const upscaleConfig = useIconForgeStore((s) => s.upscaleConfig);
+  const updateUpscaleConfig = useIconForgeStore((s) => s.updateUpscaleConfig);
 
   return (
     <aside className="h-full overflow-y-auto p-4" style={{ minWidth: 0 }}>
@@ -67,6 +70,14 @@ export function ParameterPanel(): JSX.Element {
         <StrokeSection
           value={renderConfig.stroke}
           onChange={updateStroke}
+        />
+
+        <hr className="border-[var(--border-hairline)]" />
+
+        {/* Upscale */}
+        <UpscaleSection
+          value={upscaleConfig}
+          onChange={updateUpscaleConfig}
         />
 
         <hr className="border-[var(--border-hairline)]" />

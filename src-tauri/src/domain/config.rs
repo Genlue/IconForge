@@ -52,3 +52,12 @@ pub struct RenderConfig {
     pub outer_shadow: OuterShadowConfig,
     pub stroke: StrokeConfig,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct UpscaleConfig {
+    pub enabled: bool,
+    pub scale: u32,
+    pub denoise: i32,
+    pub model: String,
+}

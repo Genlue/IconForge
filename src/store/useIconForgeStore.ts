@@ -4,6 +4,7 @@ import type {
   RenderConfig,
   OuterShadowConfig,
   StrokeConfig,
+  UpscaleConfig,
 } from "../types/domain";
 import { ExportMode } from "../types/domain";
 import type {
@@ -11,7 +12,7 @@ import type {
   ExportIcoResponse,
   ApplyToLnkResponse,
 } from "../types/commands";
-import { DEFAULT_RENDER_CONFIG } from "../constants/defaults";
+import { DEFAULT_RENDER_CONFIG, DEFAULT_UPSCALE_CONFIG } from "../constants/defaults";
 import { getPresetById } from "../constants/presets";
 import { commands } from "../lib/tauri";
 import { normalizeInvokeError } from "../types/errors";
@@ -20,6 +21,7 @@ export interface IconForgeState {
   items: InputItem[];
   selectedItemId: string | null;
   renderConfig: RenderConfig;
+  upscaleConfig: UpscaleConfig;
   activePresetId: string | null;
   isImporting: boolean;
   isExporting: boolean;
@@ -34,6 +36,7 @@ export interface IconForgeState {
   updateRenderConfig(patch: Partial<RenderConfig>): void;
   updateOuterShadow(patch: Partial<OuterShadowConfig>): void;
   updateStroke(patch: Partial<StrokeConfig>): void;
+  updateUpscaleConfig(patch: Partial<UpscaleConfig>): void;
   applyPreset(presetId: string): void;
   exportAsIco(): Promise<void>;
   applyToSelectedLnks(): Promise<void>;
@@ -45,6 +48,7 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
   items: [],
   selectedItemId: null,
   renderConfig: { ...DEFAULT_RENDER_CONFIG },
+  upscaleConfig: { ...DEFAULT_UPSCALE_CONFIG },
   activePresetId: "macos-classic-rounded",
   isImporting: false,
   isExporting: false,
@@ -126,11 +130,19 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
     }));
   },
 
+  updateUpscaleConfig: (patch: Partial<UpscaleConfig>) => {
+    set((state) => ({
+      upscaleConfig: { ...state.upscaleConfig, ...patch },
+      activePresetId: null,
+    }));
+  },
+
   applyPreset: (presetId: string) => {
     const preset = getPresetById(presetId);
     if (!preset) return;
     set({
       renderConfig: JSON.parse(JSON.stringify(preset.config)),
+      upscaleConfig: { ...DEFAULT_UPSCALE_CONFIG },
       activePresetId: presetId,
     });
   },
