@@ -116,7 +116,9 @@ export function PreviewPane(): JSX.Element {
         className="glass-panel relative flex aspect-square items-center justify-center overflow-hidden"
         style={{ width: 420, maxWidth: "100%", maxHeight: "100%" }}
       >
-        <Checkerboard />
+        <div className="pointer-events-none absolute inset-0 z-0">
+          <Checkerboard />
+        </div>
         {selectedItem ? (
           <>
             <canvas
