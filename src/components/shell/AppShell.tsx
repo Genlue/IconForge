@@ -18,11 +18,12 @@ export function AppShell(): JSX.Element {
       style={{
         display: "grid",
         gridTemplateColumns: "minmax(520px, 1fr) 360px",
-        gridTemplateRows: "52px minmax(420px, 1fr) 184px",
+        gridTemplateRows: "52px 1fr 184px 24px",
         gridTemplateAreas: `
           "title title"
           "preview controls"
           "batch controls"
+          "status status"
         `,
         width: "100vw",
         height: "100vh",
@@ -44,14 +45,14 @@ export function AppShell(): JSX.Element {
       <div style={{ gridArea: "batch" }}>
         <BatchTray />
       </div>
-      <div style={{ gridArea: "title", justifySelf: "end", alignSelf: "end" }}>
+      <ErrorBanner error={error} onDismiss={clearError} />
+      <div style={{ gridArea: "status" }}>
         <StatusBar
           itemCount={items.length}
           busy={isImporting || isExporting}
           message={isImporting ? "导入中..." : isExporting ? "导出中..." : null}
         />
       </div>
-      <ErrorBanner error={error} onDismiss={clearError} />
     </div>
   );
 }
