@@ -1,13 +1,13 @@
-import { IconShape, BackplateType } from "../types/domain";
+import { IconShape, BackplateType, ForegroundFit } from "../types/domain";
 import type { RenderConfig, UpscaleConfig } from "../types/domain";
 
-export const BASE_SHAPE_INSET = 16;
-
 export const DEFAULT_RENDER_CONFIG: Readonly<RenderConfig> = {
-  foregroundScalePercent: 78,
+  foregroundScalePercent: 100,
+  foregroundFit: ForegroundFit.Contain,
   foregroundOffsetX: 0,
-  foregroundOffsetY: -2,
+  foregroundOffsetY: 0,
   foregroundRotationDegrees: 0,
+  canvasInset: 0,
   shape: IconShape.RoundedRectangle,
   cornerRadius: 52,
   squircleExponent: 4,
@@ -17,16 +17,16 @@ export const DEFAULT_RENDER_CONFIG: Readonly<RenderConfig> = {
   gradientEndColor: "#FFFFFFFF",
   gradientAngleDegrees: 90,
   outerShadow: {
-    enabled: true,
+    enabled: false,
     offsetX: 0,
-    offsetY: 10,
-    blurRadius: 22,
+    offsetY: 0,
+    blurRadius: 0,
     spread: 0,
-    color: "#0000002E",
+    color: "#00000000",
   },
   stroke: {
-    width: 1,
-    color: "#0000001F",
+    width: 0,
+    color: "#00000000",
   },
 };
 

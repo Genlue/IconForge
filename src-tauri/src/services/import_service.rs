@@ -154,6 +154,9 @@ fn create_item_from_extracted(
     let thumbnail = generate_thumbnail(&extracted.pixels)?;
 
     let id = Uuid::new_v4().to_string();
+    let resolved_target_path = extracted
+        .resolved_target_path
+        .map(|p| p.to_string_lossy().to_string());
     let supported = match file_type {
         InputFileType::Lnk => vec![ExportMode::ExportAsIco, ExportMode::ApplyToLnk],
         _ => vec![ExportMode::ExportAsIco],
@@ -164,10 +167,8 @@ fn create_item_from_extracted(
         source_path: path.to_string_lossy().to_string(),
         display_name,
         file_type,
-        parent_directory_path: extracted
-            .resolved_target_path
-            .map(|p| p.to_string_lossy().to_string()),
-        resolved_target_path: None,
+        parent_directory_path: path.parent().map(|p| p.to_string_lossy().to_string()),
+        resolved_target_path,
         source_width: extracted.pixels.width(),
         source_height: extracted.pixels.height(),
         thumbnail_png_base64: thumbnail,

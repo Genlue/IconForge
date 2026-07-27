@@ -1,6 +1,6 @@
 use image::RgbaImage;
 
-use crate::domain::config::{BackplateType, IconShape, RenderConfig};
+use crate::domain::config::{BackplateType, ForegroundFit, IconShape, RenderConfig};
 use crate::error::app_error::AppError;
 
 use super::color::{parse_hex_rgba, LinearRgba};
@@ -15,9 +15,11 @@ use super::transform::render_foreground;
 pub struct ValidatedRenderConfig {
     pub shape: IconShape,
     pub foreground_scale_percent: f32,
+    pub foreground_fit: ForegroundFit,
     pub foreground_offset_x: f32,
     pub foreground_offset_y: f32,
     pub foreground_rotation_degrees: f32,
+    pub canvas_inset: f32,
     pub corner_radius: f32,
     pub squircle_exponent: f32,
     pub backplate_type: BackplateType,
@@ -37,10 +39,10 @@ pub struct ValidatedRenderConfig {
 
 pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, AppError> {
     if !config.foreground_scale_percent.is_finite()
-        || !(10.0..=100.0).contains(&config.foreground_scale_percent)
+        || !(10.0..=300.0).contains(&config.foreground_scale_percent)
     {
         return Err(AppError::InvalidArgument(
-            "foregroundScalePercent must be in 10..=100".into(),
+            "foregroundScalePercent must be in 10..=300".into(),
         ));
     }
 
@@ -56,6 +58,28 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
     {
         return Err(AppError::InvalidArgument(
             "foregroundOffsetX out of range".into(),
+        ));
+    }
+
+    if !config.foreground_offset_y.is_finite()
+        || !(-128.0..=128.0).contains(&config.foreground_offset_y)
+    {
+        return Err(AppError::InvalidArgument(
+            "foregroundOffsetY out of range".into(),
+        ));
+    }
+
+    if !config.foreground_rotation_degrees.is_finite()
+        || !(-180.0..=180.0).contains(&config.foreground_rotation_degrees)
+    {
+        return Err(AppError::InvalidArgument(
+            "foregroundRotationDegrees out of range".into(),
+        ));
+    }
+
+    if !config.canvas_inset.is_finite() || !(0.0..=112.0).contains(&config.canvas_inset) {
+        return Err(AppError::InvalidArgument(
+            "canvasInset must be in 0..=112".into(),
         ));
     }
 
@@ -76,12 +100,49 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
         ));
     }
 
+    if !config.gradient_angle_degrees.is_finite()
+        || !(0.0..=360.0).contains(&config.gradient_angle_degrees)
+    {
+        return Err(AppError::InvalidArgument(
+            "gradientAngleDegrees must be in 0..=360".into(),
+        ));
+    }
+
+    let shadow = &config.outer_shadow;
+    if !shadow.offset_x.is_finite() || !(-64.0..=64.0).contains(&shadow.offset_x) {
+        return Err(AppError::InvalidArgument(
+            "shadow offsetX out of range".into(),
+        ));
+    }
+    if !shadow.offset_y.is_finite() || !(-64.0..=64.0).contains(&shadow.offset_y) {
+        return Err(AppError::InvalidArgument(
+            "shadow offsetY out of range".into(),
+        ));
+    }
+    if !shadow.blur_radius.is_finite() || !(0.0..=64.0).contains(&shadow.blur_radius) {
+        return Err(AppError::InvalidArgument(
+            "shadow blurRadius must be in 0..=64".into(),
+        ));
+    }
+    if !shadow.spread.is_finite() || !(0.0..=32.0).contains(&shadow.spread) {
+        return Err(AppError::InvalidArgument(
+            "shadow spread must be in 0..=32".into(),
+        ));
+    }
+    if !config.stroke.width.is_finite() || !(0.0..=32.0).contains(&config.stroke.width) {
+        return Err(AppError::InvalidArgument(
+            "stroke width must be in 0..=32".into(),
+        ));
+    }
+
     Ok(ValidatedRenderConfig {
         shape: config.shape,
         foreground_scale_percent: config.foreground_scale_percent,
+        foreground_fit: config.foreground_fit,
         foreground_offset_x: config.foreground_offset_x,
         foreground_offset_y: config.foreground_offset_y,
         foreground_rotation_degrees: config.foreground_rotation_degrees,
+        canvas_inset: config.canvas_inset,
         corner_radius: config.corner_radius,
         squircle_exponent: config.squircle_exponent,
         backplate_type: config.backplate_type,

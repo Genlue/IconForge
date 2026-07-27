@@ -1,30 +1,32 @@
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
 
-use crate::domain::config::RenderConfig;
+use crate::domain::config::{RenderConfig, UpscaleConfig};
 use crate::domain::input::ExportMode;
-use crate::domain::request::{ApplyToLnkRequest, ExportIcoRequest};
+use crate::domain::request::{ApplyToLnkRequest, ExportIcoItemRequest, ExportIcoRequest};
 use crate::domain::response::{
     AppliedShortcut, ApplyToLnkResponse, ExportIcoResponse, ExportedFile, RejectedPath,
 };
 use crate::error::app_error::AppError;
-use crate::extractor::IconExtractor;
 use crate::output::ico_writer::{self, encode_ico};
 use crate::output::managed_icon;
 use crate::renderer;
 use crate::state::AppState;
 
 pub fn prepare_ico(
+    app: &AppHandle,
     source_path: &Path,
     config: &RenderConfig,
+    upscale_config: &UpscaleConfig,
     state: &AppState,
 ) -> Result<Vec<u8>, AppError> {
     let validated = renderer::validate_config(config)?;
-    let extractor = IconExtractor::new(&state.com_sta_worker);
-    let extracted = extractor.extract(source_path)?;
-    let icon_set = renderer::render_icon_set(&extracted.pixels, &validated)?;
+    let source =
+        super::source_service::load_processed_source(app, source_path, upscale_config, state)?;
+    let icon_set = renderer::render_icon_set(&source, &validated)?;
     encode_ico(&icon_set)
 }
 
@@ -39,29 +41,26 @@ pub fn export_ico_batch(
         ));
     }
 
-    if request.source_paths.is_empty() {
-        return Err(AppError::InvalidArgument(
-            "sourcePaths must not be empty".into(),
-        ));
+    if request.items.is_empty() {
+        return Err(AppError::InvalidArgument("items must not be empty".into()));
     }
 
-    let mut paths: Vec<PathBuf> = request
-        .source_paths
-        .iter()
-        .filter_map(|p: &String| {
-            let path = Path::new(p);
-            std::fs::canonicalize(path).ok()
+    let mut seen = HashSet::new();
+    let jobs: Vec<(PathBuf, ExportIcoItemRequest)> = request
+        .items
+        .into_iter()
+        .filter_map(|item| {
+            let path = std::fs::canonicalize(Path::new(&item.source_path)).ok()?;
+            seen.insert(path.clone()).then_some((path, item))
         })
         .collect();
-    paths.sort();
-    paths.dedup();
 
-    if paths.is_empty() {
+    if jobs.is_empty() {
         return Err(AppError::InvalidArgument("no valid source paths".into()));
     }
 
-    if paths.len() == 1 {
-        let path = &paths[0];
+    if jobs.len() == 1 {
+        let (path, item) = &jobs[0];
         let stem = sanitize_filename(path.file_stem().and_then(|s| s.to_str()).unwrap_or("icon"));
         let default_name = format!("{}.ico", stem);
 
@@ -76,7 +75,8 @@ pub fn export_ico_batch(
                 let output_path = output_path.into_path().map_err(|e| {
                     AppError::IoFailed(format!("invalid path from dialog: {}", e), None)
                 })?;
-                let ico_bytes = prepare_ico(path, &request.render_config, state)?;
+                let ico_bytes =
+                    prepare_ico(app, path, &item.render_config, &item.upscale_config, state)?;
                 ico_writer::write_ico_atomic(&output_path, &ico_bytes)?;
                 Ok(ExportIcoResponse {
                     cancelled: false,
@@ -111,14 +111,14 @@ pub fn export_ico_batch(
         let mut files = Vec::new();
         let mut warnings = Vec::new();
 
-        for path in &paths {
+        for (path, item) in &jobs {
             let stem =
                 sanitize_filename(path.file_stem().and_then(|s| s.to_str()).unwrap_or("icon"));
             let output_path =
                 crate::output::atomic_file::next_available_path(&dir_path, &stem, "ico")
                     .unwrap_or_else(|_| dir_path.join(format!("{}.ico", stem)));
 
-            match prepare_ico(path, &request.render_config, state) {
+            match prepare_ico(app, path, &item.render_config, &item.upscale_config, state) {
                 Ok(ico_bytes) => match ico_writer::write_ico_atomic(&output_path, &ico_bytes) {
                     Ok(()) => {
                         files.push(ExportedFile {
@@ -155,14 +155,11 @@ pub fn apply_to_shortcuts(
         ));
     }
 
-    let validated = renderer::validate_config(&request.render_config)?;
-    let extractor = IconExtractor::new(&state.com_sta_worker);
-
     let mut applied = Vec::new();
     let mut failed = Vec::new();
 
-    for lnk_path_str in &request.lnk_paths {
-        let lnk_path = Path::new(lnk_path_str);
+    for item in &request.items {
+        let lnk_path = Path::new(&item.lnk_path);
 
         let ext = lnk_path
             .extension()
@@ -171,24 +168,37 @@ pub fn apply_to_shortcuts(
             .unwrap_or_default();
         if ext != "lnk" {
             failed.push(RejectedPath {
-                path: lnk_path_str.clone(),
+                path: item.lnk_path.clone(),
                 code: "InvalidArgument".into(),
                 message: "only .lnk files can be modified".into(),
             });
             continue;
         }
 
+        let validated = match renderer::validate_config(&item.render_config) {
+            Ok(config) => config,
+            Err(e) => {
+                failed.push(RejectedPath {
+                    path: item.lnk_path.clone(),
+                    code: e.code().to_string(),
+                    message: e.to_string(),
+                });
+                continue;
+            }
+        };
+
         match process_single_shortcut(
             app,
             lnk_path,
-            &request.render_config,
+            &item.render_config,
+            &item.upscale_config,
             &validated,
-            &extractor,
+            state,
         ) {
             Ok(result) => applied.push(result),
             Err(e) => {
                 failed.push(RejectedPath {
-                    path: lnk_path_str.clone(),
+                    path: item.lnk_path.clone(),
                     code: e.code().to_string(),
                     message: e.to_string(),
                 });
@@ -205,20 +215,17 @@ fn process_single_shortcut(
     app: &AppHandle,
     lnk_path: &Path,
     raw_config: &RenderConfig,
+    upscale_config: &UpscaleConfig,
     config: &renderer::ValidatedRenderConfig,
-    extractor: &IconExtractor,
+    state: &AppState,
 ) -> Result<AppliedShortcut, AppError> {
-    let extracted = extractor.extract(lnk_path)?;
-    let icon_set = renderer::render_icon_set(&extracted.pixels, config)?;
+    let source =
+        super::source_service::load_processed_source(app, lnk_path, upscale_config, state)?;
+    let icon_set = renderer::render_icon_set(&source, config)?;
     let ico_bytes = encode_ico(&icon_set)?;
 
-    let managed_path = managed_icon::persist_for_shortcut(
-        app,
-        lnk_path,
-        &extracted.pixels,
-        raw_config,
-        &ico_bytes,
-    )?;
+    let managed_path =
+        managed_icon::persist_for_shortcut(app, lnk_path, &source, raw_config, &ico_bytes)?;
 
     let backup =
         crate::windows::shell_link::rewrite_shortcut_icon_atomic(lnk_path, &managed_path, 0)?;

@@ -23,10 +23,11 @@ pub async fn import_paths(
 
 #[tauri::command]
 pub async fn render_preview(
+    app: AppHandle,
     request: RenderPreviewRequest,
     state: State<'_, AppState>,
 ) -> Result<RenderPreviewResponse, CommandError> {
-    render_service::render_preview(request, &state).map_err(into_cmd_err)
+    render_service::render_preview(&app, request, &state).map_err(into_cmd_err)
 }
 
 #[tauri::command]

@@ -1,4 +1,4 @@
-import type { InputItem, RenderConfig, ExportMode } from "./domain";
+import type { InputItem, RenderConfig, UpscaleConfig, ExportMode } from "./domain";
 
 export interface ImportPathsRequest {
   paths: string[];
@@ -19,6 +19,7 @@ export interface RejectedPath {
 export interface RenderPreviewRequest {
   sourcePath: string;
   renderConfig: RenderConfig;
+  upscaleConfig: UpscaleConfig;
   previewSize: number;
 }
 
@@ -26,11 +27,18 @@ export interface RenderPreviewResponse {
   pngBase64: string;
   width: number;
   height: number;
+  processedSourceWidth: number;
+  processedSourceHeight: number;
+}
+
+export interface ExportIcoItemRequest {
+  sourcePath: string;
+  renderConfig: RenderConfig;
+  upscaleConfig: UpscaleConfig;
 }
 
 export interface ExportIcoRequest {
-  sourcePaths: string[];
-  renderConfig: RenderConfig;
+  items: ExportIcoItemRequest[];
   exportMode: ExportMode.ExportAsIco;
 }
 
@@ -45,9 +53,14 @@ export interface ExportIcoResponse {
   warnings: string[];
 }
 
-export interface ApplyToLnkRequest {
-  lnkPaths: string[];
+export interface ApplyToLnkItemRequest {
+  lnkPath: string;
   renderConfig: RenderConfig;
+  upscaleConfig: UpscaleConfig;
+}
+
+export interface ApplyToLnkRequest {
+  items: ApplyToLnkItemRequest[];
   exportMode: ExportMode.ApplyToLnk;
 }
 

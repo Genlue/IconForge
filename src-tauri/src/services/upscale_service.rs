@@ -16,6 +16,7 @@ pub fn detect_realcugan(exe_path: &Path) -> bool {
 /// Calls `realcugan-ncnn-vulkan.exe` with the given parameters. A timeout
 /// of 120 seconds is enforced via a background thread and mpsc channel.
 pub fn run_upscale(
+    exe_path: &Path,
     input_path: &Path,
     output_path: &Path,
     scale: u32,
@@ -28,11 +29,12 @@ pub fn run_upscale(
     let output_str = output_path
         .to_str()
         .ok_or_else(|| AppError::InvalidArgument("output path is not valid UTF-8".into()))?;
-    let model_str = model_dir
-        .to_str()
-        .ok_or_else(|| AppError::InvalidArgument("model directory path is not valid UTF-8".into()))?;
+    let model_str = model_dir.to_str().ok_or_else(|| {
+        AppError::InvalidArgument("model directory path is not valid UTF-8".into())
+    })?;
 
-    let mut child = Command::new("realcugan-ncnn-vulkan.exe")
+    let mut child = Command::new(exe_path)
+        .current_dir(exe_path.parent().unwrap_or_else(|| Path::new(".")))
         .arg("-i")
         .arg(input_str)
         .arg("-o")
@@ -48,7 +50,7 @@ pub fn run_upscale(
         .spawn()
         .map_err(|e| {
             AppError::IoFailed(
-                format!("failed to spawn realcugan-ncnn-vulkan.exe: {}", e),
+                format!("failed to spawn {}: {}", exe_path.display(), e),
                 None,
             )
         })?;

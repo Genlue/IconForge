@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import type { RenderConfig } from "../types/domain";
+import type { RenderConfig, UpscaleConfig } from "../types/domain";
 import type { CommandError } from "../types/commands";
 import { commands } from "../lib/tauri";
 import { normalizeInvokeError } from "../types/errors";
 
 export interface DebouncedPreviewState {
   pngDataUrl: string | null;
+  processedSourceWidth: number | null;
+  processedSourceHeight: number | null;
   loading: boolean;
   error: CommandError | null;
 }
@@ -13,11 +15,14 @@ export interface DebouncedPreviewState {
 export function useDebouncedPreview(
   sourcePath: string | null,
   config: RenderConfig,
+  upscaleConfig: UpscaleConfig,
   previewSize: number,
   delayMs: number = 250,
 ): DebouncedPreviewState {
   const [state, setState] = useState<DebouncedPreviewState>({
     pngDataUrl: null,
+    processedSourceWidth: null,
+    processedSourceHeight: null,
     loading: false,
     error: null,
   });
@@ -32,11 +37,14 @@ export function useDebouncedPreview(
         const response = await commands.renderPreview({
           sourcePath,
           renderConfig: config,
+          upscaleConfig,
           previewSize,
         });
         if (generationRef.current === generation) {
           setState({
             pngDataUrl: `data:image/png;base64,${response.pngBase64}`,
+            processedSourceWidth: response.processedSourceWidth,
+            processedSourceHeight: response.processedSourceHeight,
             loading: false,
             error: null,
           });
@@ -45,6 +53,8 @@ export function useDebouncedPreview(
         if (generationRef.current === generation) {
           setState({
             pngDataUrl: null,
+            processedSourceWidth: null,
+            processedSourceHeight: null,
             loading: false,
             error: normalizeInvokeError(err),
           });
@@ -52,7 +62,7 @@ export function useDebouncedPreview(
       }
     }, delayMs);
     return () => clearTimeout(timer);
-  }, [sourcePath, config, previewSize, delayMs]);
+  }, [sourcePath, config, upscaleConfig, previewSize, delayMs]);
 
   return state;
 }

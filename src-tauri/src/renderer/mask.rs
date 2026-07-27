@@ -9,7 +9,7 @@ pub fn generate_shape_mask(size: u32, config: &ValidatedRenderConfig) -> AlphaMa
     let pixel_count = (size * size) as usize;
     let mut mask = vec![0.0f32; pixel_count];
 
-    let inset = super::BASE_SHAPE_INSET;
+    let inset = config.canvas_inset;
     let half_size = (size as f32) / 2.0;
 
     for y in 0..size {
@@ -75,14 +75,18 @@ fn is_inside_shape(
             px >= inset && px <= (size as f32 - inset) && py >= inset && py <= (size as f32 - inset)
         }
         IconShape::RoundedRectangle => {
-            let r = config.corner_radius.min(112.0);
             let inner_half = half_size - inset;
+            if inner_half <= 0.0 {
+                return false;
+            }
+            let r = (config.corner_radius - (inset - config.canvas_inset).max(0.0))
+                .clamp(0.0, inner_half);
             let cx = half_size;
             let cy = half_size;
             let qx = (px - cx).abs() - (inner_half - r);
             let qy = (py - cy).abs() - (inner_half - r);
             let distance =
-                (qx.max(0.0).powi(2) + qy.max(0.0).powi(2)).sqrt() + qx.min(qy).min(0.0) - r;
+                (qx.max(0.0).powi(2) + qy.max(0.0).powi(2)).sqrt() + qx.max(qy).min(0.0) - r;
             distance <= 0.0
         }
         IconShape::Squircle => {
@@ -90,6 +94,9 @@ fn is_inside_shape(
             let cy = half_size;
             let a = half_size - inset;
             let b = half_size - inset;
+            if a <= 0.0 || b <= 0.0 {
+                return false;
+            }
             let n = config.squircle_exponent;
             let fx = ((px - cx).abs() / a).powf(n);
             let fy = ((py - cy).abs() / b).powf(n);

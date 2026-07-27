@@ -1,15 +1,17 @@
-import { IconShape, BackplateType } from "../types/domain";
+import { IconShape, BackplateType, ForegroundFit } from "../types/domain";
 import type { PresetDefinition } from "../types/domain";
 
 const MACOS_CLASSIC_ROUNDED: PresetDefinition = {
   id: "macos-classic-rounded",
   name: "macOS 经典圆角",
-  description: "白色圆角背板、轻描边和柔和底部阴影",
+  description: "白色圆角背板，无边距、描边和阴影",
   config: {
-    foregroundScalePercent: 78,
+    foregroundScalePercent: 100,
+    foregroundFit: ForegroundFit.Contain,
     foregroundOffsetX: 0,
-    foregroundOffsetY: -2,
+    foregroundOffsetY: 0,
     foregroundRotationDegrees: 0,
+    canvasInset: 0,
     shape: IconShape.RoundedRectangle,
     cornerRadius: 52,
     squircleExponent: 4,
@@ -19,16 +21,16 @@ const MACOS_CLASSIC_ROUNDED: PresetDefinition = {
     gradientEndColor: "#FFFFFFFF",
     gradientAngleDegrees: 90,
     outerShadow: {
-      enabled: true,
+      enabled: false,
       offsetX: 0,
-      offsetY: 10,
-      blurRadius: 22,
+      offsetY: 0,
+      blurRadius: 0,
       spread: 0,
-      color: "#0000002E",
+      color: "#00000000",
     },
     stroke: {
-      width: 1,
-      color: "#0000001F",
+      width: 0,
+      color: "#00000000",
     },
   },
 };
@@ -38,10 +40,12 @@ const IOS_SQUIRCLE: PresetDefinition = {
   name: "iOS 超椭圆",
   description: "高饱和渐变超椭圆背板和紧凑前景",
   config: {
-    foregroundScalePercent: 72,
+    foregroundScalePercent: 100,
+    foregroundFit: ForegroundFit.Cover,
     foregroundOffsetX: 0,
     foregroundOffsetY: 0,
     foregroundRotationDegrees: 0,
+    canvasInset: 12,
     shape: IconShape.Squircle,
     cornerRadius: 56,
     squircleExponent: 4.5,
@@ -71,9 +75,11 @@ const MINIMAL_GLYPH: PresetDefinition = {
   description: "只保留原始图像，不添加背板、阴影或描边",
   config: {
     foregroundScalePercent: 100,
+    foregroundFit: ForegroundFit.Contain,
     foregroundOffsetX: 0,
     foregroundOffsetY: 0,
     foregroundRotationDegrees: 0,
+    canvasInset: 0,
     shape: IconShape.Rectangle,
     cornerRadius: 0,
     squircleExponent: 4,

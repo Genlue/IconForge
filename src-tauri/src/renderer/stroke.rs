@@ -22,7 +22,7 @@ pub fn render_inner_stroke(
         a: 0.0,
     });
 
-    let inset_mask = generate_inset_shape_mask(size, config, super::BASE_SHAPE_INSET + width);
+    let inset_mask = generate_inset_shape_mask(size, config, config.canvas_inset + width);
 
     for i in 0..mask.len() {
         let outer_alpha = mask[i];
@@ -31,10 +31,11 @@ pub fn render_inner_stroke(
         if stroke_alpha <= 0.0 {
             continue;
         }
-        result.data[i][0] = stroke_color.r * stroke_alpha;
-        result.data[i][1] = stroke_color.g * stroke_alpha;
-        result.data[i][2] = stroke_color.b * stroke_alpha;
-        result.data[i][3] = stroke_color.a * stroke_alpha;
+        let alpha = stroke_color.a * stroke_alpha;
+        result.data[i][0] = stroke_color.r * alpha;
+        result.data[i][1] = stroke_color.g * alpha;
+        result.data[i][2] = stroke_color.b * alpha;
+        result.data[i][3] = alpha;
     }
 
     result

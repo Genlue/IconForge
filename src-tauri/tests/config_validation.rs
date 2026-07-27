@@ -5,10 +5,12 @@ mod tests {
 
     fn make_default_config() -> RenderConfig {
         RenderConfig {
-            foreground_scale_percent: 78.0,
+            foreground_scale_percent: 100.0,
+            foreground_fit: ForegroundFit::Contain,
             foreground_offset_x: 0.0,
-            foreground_offset_y: -2.0,
+            foreground_offset_y: 0.0,
             foreground_rotation_degrees: 0.0,
+            canvas_inset: 16.0,
             shape: IconShape::RoundedRectangle,
             corner_radius: 52.0,
             squircle_exponent: 4.0,
@@ -49,7 +51,7 @@ mod tests {
     #[test]
     fn test_invalid_scale() {
         let mut config = make_default_config();
-        config.foreground_scale_percent = 200.0;
+        config.foreground_scale_percent = 301.0;
         assert!(validate_config(&config).is_err());
     }
 

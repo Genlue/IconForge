@@ -16,6 +16,13 @@ pub enum BackplateType {
     Gradient,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum ForegroundFit {
+    Contain,
+    Cover,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct OuterShadowConfig {
@@ -38,9 +45,11 @@ pub struct StrokeConfig {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RenderConfig {
     pub foreground_scale_percent: f32,
+    pub foreground_fit: ForegroundFit,
     pub foreground_offset_x: f32,
     pub foreground_offset_y: f32,
     pub foreground_rotation_degrees: f32,
+    pub canvas_inset: f32,
     pub shape: IconShape,
     pub corner_radius: f32,
     pub squircle_exponent: f32,
@@ -53,7 +62,7 @@ pub struct RenderConfig {
     pub stroke: StrokeConfig,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct UpscaleConfig {
     pub enabled: bool,

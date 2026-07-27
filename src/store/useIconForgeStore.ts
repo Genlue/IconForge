@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type {
   InputItem,
+  ItemConfig,
   RenderConfig,
   OuterShadowConfig,
   StrokeConfig,
@@ -20,9 +21,7 @@ import { normalizeInvokeError } from "../types/errors";
 export interface IconForgeState {
   items: InputItem[];
   selectedItemId: string | null;
-  renderConfig: RenderConfig;
-  upscaleConfig: UpscaleConfig;
-  activePresetId: string | null;
+  itemConfigs: Record<string, ItemConfig>;
   isImporting: boolean;
   isExporting: boolean;
   dragActive: boolean;
@@ -38,7 +37,9 @@ export interface IconForgeState {
   updateStroke(patch: Partial<StrokeConfig>): void;
   updateUpscaleConfig(patch: Partial<UpscaleConfig>): void;
   applyPreset(presetId: string): void;
+  applyCurrentConfigToAll(): void;
   exportAsIco(): Promise<void>;
+  exportAllAsIco(): Promise<void>;
   applyToSelectedLnks(): Promise<void>;
   setDragActive(active: boolean): void;
   clearError(): void;
@@ -47,9 +48,7 @@ export interface IconForgeState {
 export const useIconForgeStore = create<IconForgeState>((set, get) => ({
   items: [],
   selectedItemId: null,
-  renderConfig: { ...DEFAULT_RENDER_CONFIG },
-  upscaleConfig: { ...DEFAULT_UPSCALE_CONFIG },
-  activePresetId: "macos-classic-rounded",
+  itemConfigs: {},
   isImporting: false,
   isExporting: false,
   dragActive: false,
@@ -68,8 +67,16 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
           (i) => !existingPaths.has(i.sourcePath.toLowerCase()),
         );
         const updatedItems = [...state.items, ...newItems];
+        const sourceConfig = state.selectedItemId
+          ? state.itemConfigs[state.selectedItemId]
+          : undefined;
+        const itemConfigs = { ...state.itemConfigs };
+        for (const item of newItems) {
+          itemConfigs[item.id] = cloneItemConfig(sourceConfig ?? createDefaultItemConfig());
+        }
         return {
           items: updatedItems,
+          itemConfigs,
           selectedItemId:
             state.selectedItemId ?? newItems[0]?.id ?? null,
           isImporting: false,
@@ -95,86 +102,104 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
           newSelected = null;
         }
       }
-      return { items: newItems, selectedItemId: newSelected };
+      const itemConfigs = { ...state.itemConfigs };
+      delete itemConfigs[id];
+      return { items: newItems, selectedItemId: newSelected, itemConfigs };
     });
   },
 
-  clearItems: () => set({ items: [], selectedItemId: null }),
+  clearItems: () => set({ items: [], selectedItemId: null, itemConfigs: {} }),
 
   selectItem: (id: string) => set({ selectedItemId: id }),
 
   updateRenderConfig: (patch: Partial<RenderConfig>) => {
-    set((state) => ({
-      renderConfig: { ...state.renderConfig, ...patch },
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
+      renderConfig: { ...config.renderConfig, ...patch },
       activePresetId: null,
-    }));
+    })));
   },
 
   updateOuterShadow: (patch: Partial<OuterShadowConfig>) => {
-    set((state) => ({
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
       renderConfig: {
-        ...state.renderConfig,
-        outerShadow: { ...state.renderConfig.outerShadow, ...patch },
+        ...config.renderConfig,
+        outerShadow: { ...config.renderConfig.outerShadow, ...patch },
       },
       activePresetId: null,
-    }));
+    })));
   },
 
   updateStroke: (patch: Partial<StrokeConfig>) => {
-    set((state) => ({
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
       renderConfig: {
-        ...state.renderConfig,
-        stroke: { ...state.renderConfig.stroke, ...patch },
+        ...config.renderConfig,
+        stroke: { ...config.renderConfig.stroke, ...patch },
       },
       activePresetId: null,
-    }));
+    })));
   },
 
   updateUpscaleConfig: (patch: Partial<UpscaleConfig>) => {
-    set((state) => ({
-      upscaleConfig: { ...state.upscaleConfig, ...patch },
-      activePresetId: null,
-    }));
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
+      upscaleConfig: { ...config.upscaleConfig, ...patch },
+    })));
   },
 
   applyPreset: (presetId: string) => {
     const preset = getPresetById(presetId);
     if (!preset) return;
-    set({
-      renderConfig: JSON.parse(JSON.stringify(preset.config)),
-      upscaleConfig: { ...DEFAULT_UPSCALE_CONFIG },
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
+      renderConfig: cloneRenderConfig(preset.config),
       activePresetId: presetId,
+    })));
+  },
+
+  applyCurrentConfigToAll: () => {
+    set((state) => {
+      if (!state.selectedItemId || state.items.length < 2) return state;
+      const selectedConfig = state.itemConfigs[state.selectedItemId];
+      if (!selectedConfig) return state;
+      const itemConfigs: Record<string, ItemConfig> = {};
+      for (const item of state.items) {
+        itemConfigs[item.id] = cloneItemConfig(selectedConfig);
+      }
+      return { itemConfigs };
     });
   },
 
   exportAsIco: async () => {
-    const { items, renderConfig } = get();
-    const selectedPaths = items
-      .filter((i) => selectedPathsFilter(i, items, get().selectedItemId))
-      .map((i) => i.sourcePath);
-    set({ isExporting: true, error: null, lastExportResult: null });
-    try {
-      const result = await commands.exportIco({
-        sourcePaths: selectedPaths,
-        renderConfig,
-        exportMode: ExportMode.ExportAsIco,
-      });
-      set({ lastExportResult: result, isExporting: false });
-    } catch (err) {
-      set({ error: normalizeInvokeError(err), isExporting: false });
-    }
+    const { items, itemConfigs, selectedItemId } = get();
+    const selectedItems = items
+      .filter((i) => selectedPathsFilter(i, items, selectedItemId))
+    await exportItemsAsIco(selectedItems, itemConfigs, set);
+  },
+
+  exportAllAsIco: async () => {
+    const { items, itemConfigs } = get();
+    await exportItemsAsIco(items, itemConfigs, set);
   },
 
   applyToSelectedLnks: async () => {
-    const { items, renderConfig } = get();
-    const lnkPaths = items
+    const { items, itemConfigs } = get();
+    const lnkItems = items
       .filter((i) => i.fileType === "Lnk")
-      .map((i) => i.sourcePath);
+      .flatMap((item) => {
+        const config = itemConfigs[item.id];
+        return config ? [{
+          lnkPath: item.sourcePath,
+          renderConfig: config.renderConfig,
+          upscaleConfig: config.upscaleConfig,
+        }] : [];
+      });
     set({ isExporting: true, error: null, lastExportResult: null });
     try {
       const result = await commands.applyToLnk({
-        lnkPaths,
-        renderConfig,
+        items: lnkItems,
         exportMode: ExportMode.ApplyToLnk,
       });
       set({ lastExportResult: result, isExporting: false });
@@ -187,6 +212,73 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
 
   clearError: () => set({ error: null }),
 }));
+
+async function exportItemsAsIco(
+  items: InputItem[],
+  itemConfigs: Record<string, ItemConfig>,
+  set: (patch: Partial<IconForgeState>) => void,
+): Promise<void> {
+  const exportItems = items.flatMap((item) => {
+    const config = itemConfigs[item.id];
+    return config ? [{
+      sourcePath: item.sourcePath,
+      renderConfig: config.renderConfig,
+      upscaleConfig: config.upscaleConfig,
+    }] : [];
+  });
+  set({ isExporting: true, error: null, lastExportResult: null });
+  try {
+    const result = await commands.exportIco({
+      items: exportItems,
+      exportMode: ExportMode.ExportAsIco,
+    });
+    set({
+      lastExportResult: result.cancelled ? null : result,
+      isExporting: false,
+    });
+  } catch (err) {
+    set({ error: normalizeInvokeError(err), isExporting: false });
+  }
+}
+
+function createDefaultItemConfig(): ItemConfig {
+  return {
+    renderConfig: cloneRenderConfig(DEFAULT_RENDER_CONFIG),
+    upscaleConfig: { ...DEFAULT_UPSCALE_CONFIG },
+    activePresetId: "macos-classic-rounded",
+  };
+}
+
+function cloneRenderConfig(config: RenderConfig): RenderConfig {
+  return {
+    ...config,
+    outerShadow: { ...config.outerShadow },
+    stroke: { ...config.stroke },
+  };
+}
+
+function cloneItemConfig(config: ItemConfig): ItemConfig {
+  return {
+    renderConfig: cloneRenderConfig(config.renderConfig),
+    upscaleConfig: { ...config.upscaleConfig },
+    activePresetId: config.activePresetId,
+  };
+}
+
+function updateSelectedConfig(
+  state: IconForgeState,
+  updater: (config: ItemConfig) => ItemConfig,
+): Partial<IconForgeState> {
+  if (!state.selectedItemId) return {};
+  const config = state.itemConfigs[state.selectedItemId];
+  if (!config) return {};
+  return {
+    itemConfigs: {
+      ...state.itemConfigs,
+      [state.selectedItemId]: updater(config),
+    },
+  };
+}
 
 function selectedPathsFilter(
   item: InputItem,

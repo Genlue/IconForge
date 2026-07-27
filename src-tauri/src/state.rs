@@ -3,9 +3,10 @@ use std::sync::Arc;
 
 use image::RgbaImage;
 use lru::LruCache;
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use uuid::Uuid;
 
+use crate::domain::config::UpscaleConfig;
 use crate::error::app_error::AppError;
 use crate::windows::com::ComStaWorker;
 
@@ -15,6 +16,12 @@ pub struct SourceCacheKey {
     pub file_len: u64,
     pub modified_nanos: u128,
     pub shortcut_signature: Option<String>,
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct UpscaleCacheKey {
+    pub source: SourceCacheKey,
+    pub config: UpscaleConfig,
 }
 
 impl SourceCacheKey {
@@ -37,6 +44,8 @@ impl SourceCacheKey {
 
 pub struct AppState {
     pub source_cache: RwLock<LruCache<SourceCacheKey, Arc<RgbaImage>>>,
+    pub upscale_cache: RwLock<LruCache<UpscaleCacheKey, Arc<RgbaImage>>>,
+    pub upscale_worker: Mutex<()>,
     pub com_sta_worker: ComStaWorker,
     pub instance_id: String,
 }
@@ -46,6 +55,8 @@ impl AppState {
         let com_sta_worker = ComStaWorker::spawn()?;
         Ok(Self {
             source_cache: RwLock::new(LruCache::new(std::num::NonZeroUsize::new(256).unwrap())),
+            upscale_cache: RwLock::new(LruCache::new(std::num::NonZeroUsize::new(32).unwrap())),
+            upscale_worker: Mutex::new(()),
             com_sta_worker,
             instance_id: Uuid::new_v4().to_string(),
         })

@@ -21,6 +21,9 @@ export function ShadowSection(props: ShadowSectionProps): JSX.Element {
         />
         启用阴影
       </label>
+      <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
+        外阴影仍受 256×256 ICO 画布限制；阴影被裁切时，请在“形状”中增加画布边距。
+      </p>
       <div className={value.enabled ? "" : "pointer-events-none opacity-40"}>
         <RangeField
           id="shadow-x"

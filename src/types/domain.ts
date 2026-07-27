@@ -17,6 +17,11 @@ export enum BackplateType {
   Gradient = "Gradient",
 }
 
+export enum ForegroundFit {
+  Contain = "Contain",
+  Cover = "Cover",
+}
+
 export enum ExportMode {
   ExportAsIco = "ExportAsIco",
   ApplyToLnk = "ApplyToLnk",
@@ -38,9 +43,11 @@ export interface StrokeConfig {
 
 export interface RenderConfig {
   foregroundScalePercent: number;
+  foregroundFit: ForegroundFit;
   foregroundOffsetX: number;
   foregroundOffsetY: number;
   foregroundRotationDegrees: number;
+  canvasInset: number;
   shape: IconShape;
   cornerRadius: number;
   squircleExponent: number;
@@ -72,6 +79,12 @@ export interface UpscaleConfig {
   scale: number;
   denoise: number;
   model: string;
+}
+
+export interface ItemConfig {
+  renderConfig: RenderConfig;
+  upscaleConfig: UpscaleConfig;
+  activePresetId: string | null;
 }
 
 export interface PresetDefinition {

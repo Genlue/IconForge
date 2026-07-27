@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use super::config::RenderConfig;
+use super::config::{RenderConfig, UpscaleConfig};
 use super::input::ExportMode;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -14,21 +14,36 @@ pub struct ImportPathsRequest {
 pub struct RenderPreviewRequest {
     pub source_path: String,
     pub render_config: RenderConfig,
+    pub upscale_config: UpscaleConfig,
     pub preview_size: u32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ExportIcoRequest {
-    pub source_paths: Vec<String>,
-    pub render_config: RenderConfig,
+    pub items: Vec<ExportIcoItemRequest>,
     pub export_mode: ExportMode,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ApplyToLnkRequest {
-    pub lnk_paths: Vec<String>,
+pub struct ExportIcoItemRequest {
+    pub source_path: String,
     pub render_config: RenderConfig,
+    pub upscale_config: UpscaleConfig,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApplyToLnkRequest {
+    pub items: Vec<ApplyToLnkItemRequest>,
     pub export_mode: ExportMode,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ApplyToLnkItemRequest {
+    pub lnk_path: String,
+    pub render_config: RenderConfig,
+    pub upscale_config: UpscaleConfig,
 }

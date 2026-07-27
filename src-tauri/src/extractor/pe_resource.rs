@@ -150,7 +150,8 @@ pub fn extract_pe_icon(path: &Path, _selector: IconSelector) -> Result<RgbaImage
     ico_bytes.push(best.height);
     ico_bytes.push(0); // palette colors
     ico_bytes.push(0); // reserved
-    ico_bytes.extend_from_slice(&best.bit_count.to_le_bytes()); // planes+bitcount as u16
+    ico_bytes.extend_from_slice(&1u16.to_le_bytes()); // color planes
+    ico_bytes.extend_from_slice(&best.bit_count.to_le_bytes()); // bit depth
     ico_bytes.extend_from_slice(&(icon_data.len() as u32).to_le_bytes()); // size
     ico_bytes.extend_from_slice(&22u32.to_le_bytes()); // offset
                                                        // Image data

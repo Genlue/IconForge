@@ -26,6 +26,18 @@ export function ShapeSection(props: ShapeSectionProps): JSX.Element {
         onChange={(v) => onChange({ shape: v })}
       />
       <RangeField
+        id="canvas-inset"
+        label="画布边距"
+        value={config.canvasInset}
+        min={0}
+        max={112}
+        step={1}
+        onChange={(v) => onChange({ canvasInset: v })}
+      />
+      <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
+        控制形状和描边离 ICO 画布边缘的距离。设为 0 可撑满整个画布；阴影较大时应保留边距。
+      </p>
+      <RangeField
         id="corner-radius"
         label="圆角半径"
         value={config.cornerRadius}

@@ -21,12 +21,40 @@ const DENOISE_OPTIONS = [
 
 const MODEL_OPTIONS = [
   { value: "se", label: "轻量 (SE)" },
-  { value: "psnr", label: "标准 (PSNR)" },
-  { value: "no-denoise", label: "无降噪" },
+  { value: "pro", label: "高质量 (Pro)" },
+  { value: "nose", label: "No-SE（仅 2x 无降噪）" },
 ];
 
 export function UpscaleSection(props: UpscaleSectionProps): JSX.Element {
   const { value, onChange } = props;
+
+  const updateModel = (model: string) => {
+    if (model === "nose") {
+      onChange({ model, scale: 2, denoise: -1 });
+      return;
+    }
+    if (model === "pro" && value.scale === 4) {
+      onChange({ model, scale: 2, denoise: value.denoise === 1 || value.denoise === 2 ? 3 : value.denoise });
+      return;
+    }
+    onChange({
+      model,
+      denoise: value.denoise === 1 || value.denoise === 2 ? 3 : value.denoise,
+    });
+  };
+
+  const updateScale = (scale: number) => {
+    if (value.model === "nose") {
+      onChange({ scale: 2, denoise: -1 });
+      return;
+    }
+    onChange({
+      scale,
+      denoise: scale >= 3 && (value.denoise === 1 || value.denoise === 2)
+        ? 3
+        : value.denoise,
+    });
+  };
 
   return (
     <section className="space-y-3">
@@ -40,6 +68,9 @@ export function UpscaleSection(props: UpscaleSectionProps): JSX.Element {
         />
         启用 Real-CUGAN 放大
       </label>
+      <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
+        先增强导入源图，再用于最终预览和所有 ICO 档位导出。首次处理可能需要几秒。
+      </p>
       <div className={value.enabled ? "space-y-3" : "pointer-events-none opacity-40 space-y-3"}>
         {/* Scale */}
         <div>
@@ -52,11 +83,15 @@ export function UpscaleSection(props: UpscaleSectionProps): JSX.Element {
           <select
             id="upscale-scale"
             value={value.scale}
-            onChange={(e) => onChange({ scale: Number(e.target.value) })}
+            onChange={(e) => updateScale(Number(e.target.value))}
             className="w-full rounded border border-[var(--border-hairline)] bg-[var(--bg-secondary)] px-2 py-1 text-xs text-[var(--text-primary)]"
           >
             {SCALE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
+              <option
+                key={opt.value}
+                value={opt.value}
+                disabled={(value.model === "pro" && opt.value === 4) || (value.model === "nose" && opt.value !== 2)}
+              >
                 {opt.label}
               </option>
             ))}
@@ -78,7 +113,15 @@ export function UpscaleSection(props: UpscaleSectionProps): JSX.Element {
             className="w-full rounded border border-[var(--border-hairline)] bg-[var(--bg-secondary)] px-2 py-1 text-xs text-[var(--text-primary)]"
           >
             {DENOISE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
+              <option
+                key={opt.value}
+                value={opt.value}
+                disabled={
+                  value.model === "nose"
+                    ? opt.value !== -1
+                    : value.scale >= 3 && (opt.value === 1 || opt.value === 2)
+                }
+              >
                 {opt.label}
               </option>
             ))}
@@ -96,7 +139,7 @@ export function UpscaleSection(props: UpscaleSectionProps): JSX.Element {
           <select
             id="upscale-model"
             value={value.model}
-            onChange={(e) => onChange({ model: e.target.value })}
+            onChange={(e) => updateModel(e.target.value)}
             className="w-full rounded border border-[var(--border-hairline)] bg-[var(--bg-secondary)] px-2 py-1 text-xs text-[var(--text-primary)]"
           >
             {MODEL_OPTIONS.map((opt) => (

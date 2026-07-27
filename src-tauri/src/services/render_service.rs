@@ -1,6 +1,5 @@
-use std::path::Path;
-
 use image::ImageEncoder;
+use tauri::AppHandle;
 
 use crate::domain::request::RenderPreviewRequest;
 use crate::domain::response::RenderPreviewResponse;
@@ -9,6 +8,7 @@ use crate::renderer::{render_master, validate_config};
 use crate::state::AppState;
 
 pub fn render_preview(
+    app: &AppHandle,
     request: RenderPreviewRequest,
     state: &AppState,
 ) -> Result<RenderPreviewResponse, AppError> {
@@ -21,21 +21,12 @@ pub fn render_preview(
 
     let validated = validate_config(&request.render_config)?;
 
-    // Get source image
-    let path = Path::new(&request.source_path);
-    let cache_key = crate::state::SourceCacheKey::for_path(&path.to_path_buf())?;
-
-    let source = {
-        let mut cache = state.source_cache.write();
-        if let Some(cached) = cache.get(&cache_key) {
-            cached.clone()
-        } else {
-            let img = crate::extractor::image_file::decode_image(path)?;
-            let arc = std::sync::Arc::new(img);
-            cache.put(cache_key, arc.clone());
-            arc
-        }
-    };
+    let source = super::source_service::load_processed_source(
+        app,
+        std::path::Path::new(&request.source_path),
+        &request.upscale_config,
+        state,
+    )?;
 
     let master = render_master(&source, &validated)?;
 
@@ -64,5 +55,7 @@ pub fn render_preview(
         png_base64: b64,
         width: preview.width(),
         height: preview.height(),
+        processed_source_width: source.width(),
+        processed_source_height: source.height(),
     })
 }

@@ -35,3 +35,7 @@ desktop.ini
 
 # Generated files
 src-tauri/gen/
+
+# Local comparison samples
+/测试/
+/IconForge-执行总结.md

@@ -8,7 +8,8 @@ pub mod stroke;
 pub mod transform;
 
 pub const MASTER_SIZE: u32 = 256;
-pub const BASE_SHAPE_INSET: f32 = 16.0;
-pub const ICO_SIZES: [u32; 6] = [256, 128, 64, 48, 32, 16];
+// Keep the largest frame first for image viewers, and include the exact
+// Windows shell sizes used at common display scaling levels.
+pub const ICO_SIZES: [u32; 8] = [256, 128, 64, 48, 32, 24, 20, 16];
 
 pub use pipeline::{render_icon_set, render_master, validate_config, ValidatedRenderConfig};

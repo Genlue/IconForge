@@ -8,16 +8,24 @@ import { ShadowSection } from "./ShadowSection";
 import { StrokeSection } from "./StrokeSection";
 import { UpscaleSection } from "./UpscaleSection";
 import { ExportActions } from "../export/ExportActions";
+import { DEFAULT_RENDER_CONFIG, DEFAULT_UPSCALE_CONFIG } from "../../constants/defaults";
 
 export function ParameterPanel(): JSX.Element {
-  const renderConfig = useIconForgeStore((s) => s.renderConfig);
-  const activePresetId = useIconForgeStore((s) => s.activePresetId);
+  const selectedItemId = useIconForgeStore((s) => s.selectedItemId);
+  const itemCount = useIconForgeStore((s) => s.items.length);
+  const itemConfig = useIconForgeStore((s) =>
+    s.selectedItemId ? s.itemConfigs[s.selectedItemId] : undefined,
+  );
   const applyPreset = useIconForgeStore((s) => s.applyPreset);
+  const applyCurrentConfigToAll = useIconForgeStore((s) => s.applyCurrentConfigToAll);
   const updateRenderConfig = useIconForgeStore((s) => s.updateRenderConfig);
   const updateOuterShadow = useIconForgeStore((s) => s.updateOuterShadow);
   const updateStroke = useIconForgeStore((s) => s.updateStroke);
-  const upscaleConfig = useIconForgeStore((s) => s.upscaleConfig);
   const updateUpscaleConfig = useIconForgeStore((s) => s.updateUpscaleConfig);
+  const renderConfig = itemConfig?.renderConfig ?? DEFAULT_RENDER_CONFIG;
+  const upscaleConfig = itemConfig?.upscaleConfig ?? DEFAULT_UPSCALE_CONFIG;
+  const activePresetId = itemConfig?.activePresetId ?? null;
+  const hasSelection = selectedItemId !== null && itemConfig !== undefined;
 
   return (
     <aside className="h-full overflow-y-auto p-4" style={{ minWidth: 0 }}>
@@ -30,7 +38,29 @@ export function ParameterPanel(): JSX.Element {
             activePresetId={activePresetId}
             onSelect={applyPreset}
           />
+          <button
+            type="button"
+            onClick={applyCurrentConfigToAll}
+            disabled={!hasSelection || itemCount < 2}
+            className="mt-3 w-full rounded-lg border border-[var(--border-hairline)] bg-white/40 px-3 py-2 text-xs text-[var(--text-primary)] transition-colors hover:bg-white/60 disabled:cursor-not-allowed disabled:opacity-40"
+            title="复制当前图标的所有参数，包括 Real-CUGAN 设置"
+          >
+            应用当前配置到全部图标
+          </button>
+          {itemCount > 1 && (
+            <p className="mt-2 text-[10px] leading-4 text-[var(--text-secondary)]">
+              右侧参数仅修改当前图标；需要统一时再使用上方按钮。
+            </p>
+          )}
         </section>
+
+        <hr className="border-[var(--border-hairline)]" />
+
+        {/* Source enhancement */}
+        <UpscaleSection
+          value={upscaleConfig}
+          onChange={updateUpscaleConfig}
+        />
 
         <hr className="border-[var(--border-hairline)]" />
 
@@ -70,14 +100,6 @@ export function ParameterPanel(): JSX.Element {
         <StrokeSection
           value={renderConfig.stroke}
           onChange={updateStroke}
-        />
-
-        <hr className="border-[var(--border-hairline)]" />
-
-        {/* Upscale */}
-        <UpscaleSection
-          value={upscaleConfig}
-          onChange={updateUpscaleConfig}
         />
 
         <hr className="border-[var(--border-hairline)]" />

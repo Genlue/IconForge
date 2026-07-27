@@ -36,5 +36,32 @@ mod tests {
             "ICO should contain {} entries",
             ICO_SIZES.len()
         );
+
+        let actual_sizes: Vec<u32> = dir.entries().iter().map(|entry| entry.width()).collect();
+        assert_eq!(
+            actual_sizes, ICO_SIZES,
+            "ICO entries should keep the largest frame first and include Windows DPI sizes"
+        );
+
+        for entry in dir.entries() {
+            let decoded = entry.decode().expect("each ICO entry should decode");
+            assert_eq!(decoded.width(), entry.width());
+            assert_eq!(decoded.height(), entry.height());
+            assert_eq!(
+                decoded.rgba_data().len(),
+                (entry.width() * entry.height() * 4) as usize
+            );
+        }
+
+        // Small entries use the BITMAPINFOHEADER signature (40 bytes), while
+        // larger entries start with the PNG signature.
+        for entry in dir.entries() {
+            let encoded = entry.data();
+            if entry.width() <= 64 {
+                assert_eq!(&encoded[..4], &40u32.to_le_bytes());
+            } else {
+                assert_eq!(&encoded[..8], b"\x89PNG\r\n\x1a\n");
+            }
+        }
     }
 }

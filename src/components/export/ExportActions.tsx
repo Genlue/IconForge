@@ -6,6 +6,7 @@ export function ExportActions(): JSX.Element {
   const isExporting = useIconForgeStore((s) => s.isExporting);
   const lastExportResult = useIconForgeStore((s) => s.lastExportResult);
   const exportAsIco = useIconForgeStore((s) => s.exportAsIco);
+  const exportAllAsIco = useIconForgeStore((s) => s.exportAllAsIco);
   const applyToSelectedLnks = useIconForgeStore((s) => s.applyToSelectedLnks);
   const hasLnks = items.some((i) => i.fileType === "Lnk");
   const hasIcoCapable = items.length > 0;
@@ -19,7 +20,14 @@ export function ExportActions(): JSX.Element {
           disabled={!hasIcoCapable || isExporting}
           className="w-full rounded-lg bg-[var(--accent)] px-3 py-2 text-sm text-white transition-opacity hover:bg-[var(--accent)]/90 disabled:opacity-40"
         >
-          {isExporting ? "导出中..." : "导出 ICO"}
+          {isExporting ? "导出中..." : "导出当前 ICO"}
+        </button>
+        <button
+          onClick={exportAllAsIco}
+          disabled={!hasIcoCapable || isExporting}
+          className="w-full rounded-lg border border-[var(--accent)] bg-[var(--accent)]/10 px-3 py-2 text-sm text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/15 disabled:opacity-40"
+        >
+          {isExporting ? "导出中..." : "全部导出"}
         </button>
         <button
           onClick={applyToSelectedLnks}

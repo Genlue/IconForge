@@ -128,6 +128,7 @@ pub fn render_shadow(mask: &AlphaMask, config: &ValidatedRenderConfig) -> Linear
                 continue;
             }
             let idx = (y * size + x) as usize;
+            let alpha = shadow_color.a * alpha;
             result.data[idx][0] = shadow_color.r * alpha;
             result.data[idx][1] = shadow_color.g * alpha;
             result.data[idx][2] = shadow_color.b * alpha;
