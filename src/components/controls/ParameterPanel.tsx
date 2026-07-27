@@ -8,6 +8,7 @@ import { ShadowSection } from "./ShadowSection";
 import { StrokeSection } from "./StrokeSection";
 import { UpscaleSection } from "./UpscaleSection";
 import { ExportActions } from "../export/ExportActions";
+import { BrushSection } from "./BrushSection";
 import { DEFAULT_RENDER_CONFIG, DEFAULT_UPSCALE_CONFIG } from "../../constants/defaults";
 
 export function ParameterPanel(): JSX.Element {
@@ -101,6 +102,11 @@ export function ParameterPanel(): JSX.Element {
           value={renderConfig.stroke}
           onChange={updateStroke}
         />
+
+        <hr className="border-[var(--border-hairline)]" />
+
+        {/* Export */}
+        <BrushSection />
 
         <hr className="border-[var(--border-hairline)]" />
 

@@ -17,6 +17,14 @@ pub fn decode_image(path: &Path) -> Result<RgbaImage, AppError> {
         ));
     }
 
+    if path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("ico"))
+    {
+        return decode_largest_ico_frame(path);
+    }
+
     let reader = image::ImageReader::open(path)
         .map_err(AppError::io_for(path))?
         .with_guessed_format()
@@ -40,4 +48,44 @@ pub fn decode_image(path: &Path) -> Result<RgbaImage, AppError> {
     }
 
     Ok(image.to_rgba8())
+}
+
+fn decode_largest_ico_frame(path: &Path) -> Result<RgbaImage, AppError> {
+    let file = std::fs::File::open(path).map_err(AppError::io_for(path))?;
+    let directory = ico::IconDir::read(file)
+        .map_err(|error| AppError::UnsupportedImage(error.to_string(), path.to_path_buf()))?;
+    let mut entries = directory.entries().iter().collect::<Vec<_>>();
+    entries.sort_by_key(|entry| {
+        let width = ico_dimension(entry.width());
+        let height = ico_dimension(entry.height());
+        (width * height, entry.bits_per_pixel())
+    });
+
+    for entry in entries.into_iter().rev() {
+        let Ok(decoded) = entry.decode() else {
+            continue;
+        };
+        if let Some(image) = RgbaImage::from_raw(
+            decoded.width(),
+            decoded.height(),
+            decoded.rgba_data().to_vec(),
+        ) {
+            return Ok(image);
+        }
+    }
+
+    Err(AppError::UnsupportedImage(
+        "ICO contains no decodable frames".into(),
+        path.to_path_buf(),
+    ))
+}
+
+#[inline]
+fn ico_dimension(value: u32) -> u32 {
+    // ICO stores 256 as a zero byte in the directory entry.
+    if value == 0 {
+        256
+    } else {
+        value
+    }
 }

@@ -38,7 +38,7 @@ export function ExportResultDialog(props: ExportResultDialogProps): JSX.Element 
         if (event.target === event.currentTarget) props.onClose();
       }}
     >
-      <div className="glass-panel flex max-h-[min(640px,calc(100vh-48px))] w-full max-w-[560px] flex-col overflow-hidden bg-white/90">
+      <div className="glass-panel flex max-h-[min(640px,calc(100vh-48px))] w-full max-w-[560px] flex-col overflow-hidden bg-[var(--surface-overlay)]">
         <div className="border-b border-[var(--border-hairline)] px-6 py-5">
           <h2 id="export-result-title" className="text-base font-semibold text-[var(--text-primary)]">
             {issueCount > 0 ? "导出完成（有提示）" : "导出完成"}
@@ -105,7 +105,7 @@ function ResultRow(props: { label: string; path: string; warning?: boolean }): J
     <div className={`rounded-xl border p-3 ${
       props.warning
         ? "border-amber-200 bg-amber-50/80"
-        : "border-[var(--border-hairline)] bg-white/55"
+        : "border-[var(--border-hairline)] bg-[var(--surface-control)]"
     }`}>
       <div className="text-xs font-semibold text-[var(--text-primary)]">{props.label}</div>
       <div className="mt-1 whitespace-pre-wrap break-all text-xs leading-5 text-[var(--text-secondary)]">

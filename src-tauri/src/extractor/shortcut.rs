@@ -24,11 +24,12 @@ pub fn extract_shortcut_icon(path: &Path, max_depth: u8) -> Result<ExtractedIcon
         // Try icon location first
         if let Some(ref icon_path) = info.icon_location {
             if icon_path.exists() {
-                let _icon_index = if info.icon_index >= 0 {
-                    info.icon_index as u32
+                let selector = if info.icon_index >= 0 {
+                    super::pe_resource::IconSelector::Index(info.icon_index as u32)
                 } else {
-                    // Absolute value for resource ID
-                    info.icon_index.unsigned_abs()
+                    super::pe_resource::IconSelector::ResourceId(
+                        info.icon_index.unsigned_abs() as u16
+                    )
                 };
 
                 // Extract from the icon path
@@ -46,10 +47,10 @@ pub fn extract_shortcut_icon(path: &Path, max_depth: u8) -> Result<ExtractedIcon
                         }
                     }
                     Ok(crate::domain::input::InputFileType::Exe) => {
-                        match super::extract_exe_icon(icon_path) {
-                            Ok(extracted) => {
+                        match super::pe_resource::extract_pe_icon(icon_path, selector) {
+                            Ok(pixels) => {
                                 return Ok(ExtractedIcon {
-                                    pixels: extracted.pixels,
+                                    pixels,
                                     resolved_target_path: Some(current_path),
                                     warnings,
                                 })

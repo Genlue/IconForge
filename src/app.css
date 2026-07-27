@@ -6,13 +6,47 @@
   --surface-app: #EEF1F7;
   --surface-glass: rgba(255, 255, 255, 0.62);
   --surface-glass-strong: rgba(255, 255, 255, 0.78);
+  --surface-control: rgba(255, 255, 255, 0.42);
+  --surface-control-hover: rgba(255, 255, 255, 0.64);
+  --surface-overlay: rgba(255, 255, 255, 0.92);
+  --surface-input: #F8FAFC;
   --border-hairline: rgba(15, 23, 42, 0.10);
   --text-primary: #172033;
   --text-secondary: #687386;
   --accent: #0a84ff;
+  --danger-surface: rgba(254, 242, 242, 0.95);
+  --danger-border: #fecaca;
+  --danger-text: #b91c1c;
+  --warning-surface: rgba(255, 251, 235, 0.80);
+  --warning-border: #fde68a;
+  --warning-text: #92400e;
   --radius-panel: 24px;
   --radius-control: 12px;
   --shadow-panel: 0 18px 48px rgba(30, 41, 59, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --surface-app: #10151e;
+    --surface-glass: rgba(29, 37, 51, 0.78);
+    --surface-glass-strong: rgba(36, 45, 61, 0.92);
+    --surface-control: rgba(255, 255, 255, 0.075);
+    --surface-control-hover: rgba(255, 255, 255, 0.14);
+    --surface-overlay: rgba(25, 32, 44, 0.96);
+    --surface-input: #1a2330;
+    --border-hairline: rgba(226, 232, 240, 0.16);
+    --text-primary: #f4f7fb;
+    --text-secondary: #aeb9ca;
+    --accent: #58a6ff;
+    --danger-surface: rgba(69, 25, 31, 0.94);
+    --danger-border: #8d3a45;
+    --danger-text: #fecaca;
+    --warning-surface: rgba(74, 55, 18, 0.82);
+    --warning-border: #92752c;
+    --warning-text: #fde68a;
+    --shadow-panel: 0 18px 48px rgba(0, 0, 0, 0.34);
+  }
 }
 
 * {
@@ -31,6 +65,7 @@ body,
     Arial, sans-serif;
   color: var(--text-primary);
   background: var(--surface-app);
+  color-scheme: light dark;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -43,3 +78,26 @@ body,
   backdrop-filter: blur(24px) saturate(145%);
   -webkit-backdrop-filter: blur(24px) saturate(145%);
 }
+
+/* Keep legacy Tailwind utility backgrounds theme-aware. */
+.bg-white\/40 { background-color: var(--surface-control) !important; }
+.bg-white\/50 { background-color: var(--surface-control) !important; }
+.bg-white\/55 { background-color: var(--surface-control) !important; }
+.bg-white\/60 { background-color: var(--surface-control-hover) !important; }
+.bg-white\/80 { background-color: var(--surface-glass-strong) !important; }
+.bg-white\/90 { background-color: var(--surface-overlay) !important; }
+.bg-\[var\(--bg-secondary\)\] { background-color: var(--surface-input) !important; }
+.border-red-200 { border-color: var(--danger-border) !important; }
+.bg-red-50\/95 { background-color: var(--danger-surface) !important; }
+.text-red-700 { color: var(--danger-text) !important; }
+.border-amber-200 { border-color: var(--warning-border) !important; }
+.bg-amber-50\/80 { background-color: var(--warning-surface) !important; }
+.text-red-600 { color: var(--danger-text) !important; }
+.hover\:bg-white\/30:hover { background-color: var(--surface-control-hover) !important; }
+.hover\:bg-white\/60:hover { background-color: var(--surface-control-hover) !important; }
+.hover\:bg-white\/80:hover { background-color: var(--surface-glass-strong) !important; }
+.hover\:bg-black\/10:hover { background-color: rgba(127, 139, 158, 0.18) !important; }
+.hover\:bg-black\/20:hover { background-color: rgba(127, 139, 158, 0.26) !important; }
+
+input, select, button { color: var(--text-primary); }
+select option { background: var(--surface-input); color: var(--text-primary); }

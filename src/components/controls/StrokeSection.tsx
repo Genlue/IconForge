@@ -28,6 +28,7 @@ export function StrokeSection(props: StrokeSectionProps): JSX.Element {
           id="stroke-color"
           label="描边颜色"
           value={value.color}
+          pickTarget="stroke"
           disabled={!showColor}
           onChange={(v) => onChange({ color: v })}
         />

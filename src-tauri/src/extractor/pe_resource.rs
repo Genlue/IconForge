@@ -16,7 +16,7 @@ pub enum IconSelector {
     ResourceId(u16),
 }
 
-pub fn extract_pe_icon(path: &Path, _selector: IconSelector) -> Result<RgbaImage, AppError> {
+pub fn extract_pe_icon(path: &Path, selector: IconSelector) -> Result<RgbaImage, AppError> {
     let wide_path: Vec<u16> = OsStr::new(path)
         .encode_wide()
         .chain(std::iter::once(0))
@@ -56,8 +56,12 @@ pub fn extract_pe_icon(path: &Path, _selector: IconSelector) -> Result<RgbaImage
         ));
     }
 
-    // Use first group icon (smallest resource ID)
-    let group_name = &group_icons[0];
+    let group_name = select_group_icon(module, &group_icons, selector).ok_or_else(|| {
+        AppError::IconExtractionFailed(
+            "requested icon group was not found".into(),
+            path.to_path_buf(),
+        )
+    })?;
 
     // Load GRPICONDIR
     let group_data = load_resource_bytes(module, RT_GROUP_ICON, group_name)?;
@@ -135,52 +139,96 @@ pub fn extract_pe_icon(path: &Path, _selector: IconSelector) -> Result<RgbaImage
             .then_with(|| a.nid.cmp(&b.nid))
     });
 
-    let best = &entries[0];
+    // Some producers include a corrupt or non-decodable 256px resource while
+    // still providing a valid 128/64px frame. Try all entries in quality order
+    // instead of falling back to the shell (which often returns only 32px).
+    for candidate in entries {
+        let resource_name = crate::windows::resource::ResourceName::Id(candidate.nid);
+        let Ok(icon_data) = load_resource_bytes(module, RT_ICON, &resource_name) else {
+            continue;
+        };
+        let mut ico_bytes = Vec::with_capacity(22 + icon_data.len());
+        ico_bytes.extend_from_slice(&[0u8, 0, 1, 0, 1, 0]);
+        ico_bytes.push(candidate.width);
+        ico_bytes.push(candidate.height);
+        ico_bytes.extend_from_slice(&[0, 0]);
+        ico_bytes.extend_from_slice(&1u16.to_le_bytes());
+        ico_bytes.extend_from_slice(&candidate.bit_count.to_le_bytes());
+        ico_bytes.extend_from_slice(&(icon_data.len() as u32).to_le_bytes());
+        ico_bytes.extend_from_slice(&22u32.to_le_bytes());
+        ico_bytes.extend_from_slice(&icon_data);
 
-    // Load the raw RT_ICON data for the selected entry
-    let resource_name = crate::windows::resource::ResourceName::Id(best.nid);
-    let icon_data = load_resource_bytes(module, RT_ICON, &resource_name)?;
+        let Ok(icon_dir) = ico::IconDir::read(std::io::Cursor::new(&ico_bytes)) else {
+            continue;
+        };
+        let Some(entry) = icon_dir.entries().first() else {
+            continue;
+        };
+        let Ok(decoded) = entry.decode() else {
+            continue;
+        };
+        if let Some(image) = image::RgbaImage::from_raw(
+            decoded.width(),
+            decoded.height(),
+            decoded.rgba_data().to_vec(),
+        ) {
+            return Ok(image);
+        }
+    }
 
-    // Construct a single-entry ICO in memory
-    let mut ico_bytes = Vec::with_capacity(22 + icon_data.len());
-    // ICONDIR header
-    ico_bytes.extend_from_slice(&[0u8, 0, 1, 0, 1, 0]);
-    // ICONDIRENTRY
-    ico_bytes.push(best.width);
-    ico_bytes.push(best.height);
-    ico_bytes.push(0); // palette colors
-    ico_bytes.push(0); // reserved
-    ico_bytes.extend_from_slice(&1u16.to_le_bytes()); // color planes
-    ico_bytes.extend_from_slice(&best.bit_count.to_le_bytes()); // bit depth
-    ico_bytes.extend_from_slice(&(icon_data.len() as u32).to_le_bytes()); // size
-    ico_bytes.extend_from_slice(&22u32.to_le_bytes()); // offset
-                                                       // Image data
-    ico_bytes.extend_from_slice(&icon_data);
+    Err(AppError::IconExtractionFailed(
+        "no decodable icon frame in selected PE group".into(),
+        path.to_path_buf(),
+    ))
+}
 
-    // Decode via ico crate
-    use std::io::Cursor;
-    let icon_dir = ico::IconDir::read(Cursor::new(&ico_bytes)).map_err(|e| {
-        AppError::IconExtractionFailed(
-            format!("failed to parse ICO from PE resource: {}", e),
-            std::path::PathBuf::new(),
-        )
-    })?;
+fn select_group_icon(
+    module: HMODULE,
+    group_icons: &[crate::windows::resource::ResourceName],
+    selector: IconSelector,
+) -> Option<&crate::windows::resource::ResourceName> {
+    match selector {
+        IconSelector::Largest => group_icons.iter().max_by_key(|name| {
+            load_resource_bytes(module, RT_GROUP_ICON, name)
+                .ok()
+                .and_then(|data| best_group_score(&data))
+                .unwrap_or((0, 0))
+        }),
+        IconSelector::Index(index) => group_icons.get(index as usize),
+        IconSelector::ResourceId(id) => group_icons.iter().find(|name| {
+            matches!(name, crate::windows::resource::ResourceName::Id(value) if *value == id)
+        }),
+    }
+}
 
-    let entry = icon_dir.entries().first().ok_or_else(|| {
-        AppError::IconExtractionFailed("no entry in parsed ICO".into(), std::path::PathBuf::new())
-    })?;
-
-    let decoded = entry.decode().map_err(|e| {
-        AppError::IconExtractionFailed(
-            format!("failed to decode ICO entry: {}", e),
-            std::path::PathBuf::new(),
-        )
-    })?;
-    let w = decoded.width();
-    let h = decoded.height();
-    let data = decoded.rgba_data().to_vec();
-    image::RgbaImage::from_raw(w, h, data)
-        .ok_or_else(|| AppError::Internal("failed to create RgbaImage from icon".into()))
+fn best_group_score(data: &[u8]) -> Option<(u32, u16)> {
+    if data.len() < 6
+        || u16::from_le_bytes([data[0], data[1]]) != 0
+        || u16::from_le_bytes([data[2], data[3]]) != 1
+    {
+        return None;
+    }
+    let count = u16::from_le_bytes([data[4], data[5]]) as usize;
+    let mut best = (0u32, 0u16);
+    for index in 0..count {
+        let offset = 6 + index * 14;
+        if offset + 14 > data.len() {
+            break;
+        }
+        let width = if data[offset] == 0 {
+            256u32
+        } else {
+            data[offset] as u32
+        };
+        let height = if data[offset + 1] == 0 {
+            256u32
+        } else {
+            data[offset + 1] as u32
+        };
+        let bit_count = u16::from_le_bytes([data[offset + 6], data[offset + 7]]);
+        best = best.max((width * height, bit_count));
+    }
+    Some(best)
 }
 
 pub fn enumerate_group_icons(

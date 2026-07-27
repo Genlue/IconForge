@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
 
-use crate::domain::config::{RenderConfig, UpscaleConfig};
+use crate::domain::config::{BrushStroke, RenderConfig, UpscaleConfig};
 use crate::domain::input::ExportMode;
 use crate::domain::request::{ApplyToLnkRequest, ExportIcoItemRequest, ExportIcoRequest};
 use crate::domain::response::{
@@ -21,12 +21,13 @@ pub fn prepare_ico(
     source_path: &Path,
     config: &RenderConfig,
     upscale_config: &UpscaleConfig,
+    brush_strokes: &[BrushStroke],
     state: &AppState,
 ) -> Result<Vec<u8>, AppError> {
     let validated = renderer::validate_config(config)?;
     let source =
         super::source_service::load_processed_source(app, source_path, upscale_config, state)?;
-    let icon_set = renderer::render_icon_set(&source, &validated)?;
+    let icon_set = renderer::render_icon_set_with_brushes(&source, &validated, brush_strokes)?;
     encode_ico(&icon_set)
 }
 
@@ -75,8 +76,14 @@ pub fn export_ico_batch(
                 let output_path = output_path.into_path().map_err(|e| {
                     AppError::IoFailed(format!("invalid path from dialog: {}", e), None)
                 })?;
-                let ico_bytes =
-                    prepare_ico(app, path, &item.render_config, &item.upscale_config, state)?;
+                let ico_bytes = prepare_ico(
+                    app,
+                    path,
+                    &item.render_config,
+                    &item.upscale_config,
+                    &item.brush_strokes,
+                    state,
+                )?;
                 ico_writer::write_ico_atomic(&output_path, &ico_bytes)?;
                 Ok(ExportIcoResponse {
                     cancelled: false,
@@ -118,7 +125,14 @@ pub fn export_ico_batch(
                 crate::output::atomic_file::next_available_path(&dir_path, &stem, "ico")
                     .unwrap_or_else(|_| dir_path.join(format!("{}.ico", stem)));
 
-            match prepare_ico(app, path, &item.render_config, &item.upscale_config, state) {
+            match prepare_ico(
+                app,
+                path,
+                &item.render_config,
+                &item.upscale_config,
+                &item.brush_strokes,
+                state,
+            ) {
                 Ok(ico_bytes) => match ico_writer::write_ico_atomic(&output_path, &ico_bytes) {
                     Ok(()) => {
                         files.push(ExportedFile {
@@ -192,6 +206,7 @@ pub fn apply_to_shortcuts(
             lnk_path,
             &item.render_config,
             &item.upscale_config,
+            &item.brush_strokes,
             &validated,
             state,
         ) {
@@ -216,12 +231,13 @@ fn process_single_shortcut(
     lnk_path: &Path,
     raw_config: &RenderConfig,
     upscale_config: &UpscaleConfig,
+    brush_strokes: &[crate::domain::config::BrushStroke],
     config: &renderer::ValidatedRenderConfig,
     state: &AppState,
 ) -> Result<AppliedShortcut, AppError> {
     let source =
         super::source_service::load_processed_source(app, lnk_path, upscale_config, state)?;
-    let icon_set = renderer::render_icon_set(&source, config)?;
+    let icon_set = renderer::render_icon_set_with_brushes(&source, config, brush_strokes)?;
     let ico_bytes = encode_ico(&icon_set)?;
 
     let managed_path =

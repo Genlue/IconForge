@@ -5,6 +5,7 @@ use std::path::Path;
 use image::RgbaImage;
 use windows::core::PCWSTR;
 use windows::Win32::Storage::FileSystem::FILE_ATTRIBUTE_NORMAL;
+use windows::Win32::UI::Controls::IImageList;
 use windows::Win32::UI::Shell::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
@@ -17,7 +18,13 @@ pub fn extract_shell_icon(path: &Path, _preferred_size: u32) -> Result<RgbaImage
         .chain(std::iter::once(0))
         .collect();
 
-    // Try ExtractIconExW first
+    // Ask the shell's jumbo image list first. ExtractIconExW's "large" slot
+    // is commonly only 32x32 even when the file contains a 256x256 icon.
+    if let Ok(image) = extract_jumbo_shell_icon(&wide_path) {
+        return Ok(image);
+    }
+
+    // Try ExtractIconExW as a compatibility fallback.
     let mut large: HICON = HICON::default();
     let mut small: HICON = HICON::default();
 
@@ -117,4 +124,37 @@ pub fn extract_shell_icon(path: &Path, _preferred_size: u32) -> Result<RgbaImage
         "all shell icon extraction methods failed".into(),
         path.to_path_buf(),
     ))
+}
+
+fn extract_jumbo_shell_icon(wide_path: &[u16]) -> Result<RgbaImage, AppError> {
+    let mut sfi = SHFILEINFOW::default();
+    let result = unsafe {
+        SHGetFileInfoW(
+            PCWSTR::from_raw(wide_path.as_ptr()),
+            FILE_ATTRIBUTE_NORMAL,
+            Some(&mut sfi as *mut SHFILEINFOW),
+            std::mem::size_of::<SHFILEINFOW>() as u32,
+            SHGFI_SYSICONINDEX | SHGFI_LARGEICON,
+        )
+    };
+    if result == 0 || sfi.iIcon < 0 {
+        return Err(AppError::Internal(
+            "SHGetFileInfoW returned no system icon".into(),
+        ));
+    }
+
+    let image_list: IImageList = unsafe { SHGetImageList(SHIL_JUMBO as i32) }
+        .map_err(|_| AppError::Internal("SHGetImageList(SHIL_JUMBO) failed".into()))?;
+    let hicon = unsafe { image_list.GetIcon(sfi.iIcon, 0) }
+        .map_err(|_| AppError::Internal("IImageList::GetIcon failed".into()))?;
+    if hicon.is_invalid() {
+        return Err(AppError::Internal(
+            "jumbo image list returned invalid icon".into(),
+        ));
+    }
+    let image = super::hicon::hicon_to_rgba(hicon);
+    unsafe {
+        let _ = DestroyIcon(hicon);
+    }
+    image
 }

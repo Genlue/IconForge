@@ -70,3 +70,19 @@ pub struct UpscaleConfig {
     pub denoise: i32,
     pub model: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BrushPoint {
+    pub x: f32,
+    pub y: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct BrushStroke {
+    pub points: Vec<BrushPoint>,
+    pub color: String,
+    pub size: f32,
+    pub opacity: f32,
+}

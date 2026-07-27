@@ -28,6 +28,9 @@ function makeConfig(): ItemConfig {
       stroke: { ...DEFAULT_RENDER_CONFIG.stroke },
     },
     upscaleConfig: { ...DEFAULT_UPSCALE_CONFIG },
+    brushStrokes: [],
+    brushColor: "#FF3B30FF",
+    brushSize: 8,
     activePresetId: "macos-classic-rounded",
   };
 }
@@ -79,19 +82,45 @@ describe("store", () => {
     useIconForgeStore.getState().updateOuterShadow({ enabled: true, blurRadius: 18 });
     useIconForgeStore.getState().updateStroke({ width: 3 });
     useIconForgeStore.getState().updateUpscaleConfig({ enabled: true, denoise: 2 });
+    useIconForgeStore.getState().addBrushStroke({
+      points: [{ x: 10, y: 10 }, { x: 30, y: 30 }],
+      color: "#FF0000FF",
+      size: 8,
+      opacity: 1,
+    });
 
     useIconForgeStore.getState().applyCurrentConfigToAll();
     let state = useIconForgeStore.getState();
-    expect(state.itemConfigs.second).toEqual(state.itemConfigs.first);
+    expect(state.itemConfigs.second?.renderConfig).toEqual(state.itemConfigs.first?.renderConfig);
+    expect(state.itemConfigs.second?.upscaleConfig).toEqual(state.itemConfigs.first?.upscaleConfig);
     expect(state.itemConfigs.second).not.toBe(state.itemConfigs.first);
     expect(state.itemConfigs.second?.renderConfig.outerShadow).not.toBe(
       state.itemConfigs.first?.renderConfig.outerShadow,
     );
+    expect(state.itemConfigs.first?.brushStrokes).toHaveLength(1);
+    expect(state.itemConfigs.second?.brushStrokes).toHaveLength(1);
 
     useIconForgeStore.getState().selectItem(second.id);
     useIconForgeStore.getState().updateOuterShadow({ blurRadius: 4 });
     state = useIconForgeStore.getState();
     expect(state.itemConfigs.first?.renderConfig.outerShadow.blurRadius).toBe(18);
     expect(state.itemConfigs.second?.renderConfig.outerShadow.blurRadius).toBe(4);
+  });
+
+  it("applies a preview-picked color to the active color field", () => {
+    const item = makeItem("first");
+    useIconForgeStore.setState({
+      items: [item],
+      selectedItemId: item.id,
+      itemConfigs: { first: makeConfig() },
+    });
+
+    useIconForgeStore.getState().startColorPicking("backplate");
+    useIconForgeStore.getState().applyPickedColor("#12ABEF");
+
+    const state = useIconForgeStore.getState();
+    expect(state.itemConfigs.first?.renderConfig.backplateColor).toBe("#12AB EFFF".replace(" ", ""));
+    expect(state.previewTool).toBe("none");
+    expect(state.colorPickTarget).toBeNull();
   });
 });

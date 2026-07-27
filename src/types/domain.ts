@@ -81,9 +81,34 @@ export interface UpscaleConfig {
   model: string;
 }
 
+export interface BrushPoint {
+  x: number;
+  y: number;
+}
+
+export interface BrushStroke {
+  points: BrushPoint[];
+  color: string;
+  size: number;
+  opacity: number;
+}
+
+export type ColorPickTarget =
+  | "brush"
+  | "backplate"
+  | "gradientStart"
+  | "gradientEnd"
+  | "shadow"
+  | "stroke";
+
+export type PreviewTool = "none" | "brush" | "eyedropper";
+
 export interface ItemConfig {
   renderConfig: RenderConfig;
   upscaleConfig: UpscaleConfig;
+  brushStrokes: BrushStroke[];
+  brushColor: string;
+  brushSize: number;
   activePresetId: string | null;
 }
 

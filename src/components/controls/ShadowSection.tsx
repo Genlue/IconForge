@@ -65,6 +65,7 @@ export function ShadowSection(props: ShadowSectionProps): JSX.Element {
           id="shadow-color"
           label="阴影颜色"
           value={value.color}
+          pickTarget="shadow"
           onChange={(v) => onChange({ color: v })}
         />
       </div>

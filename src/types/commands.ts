@@ -1,4 +1,4 @@
-import type { InputItem, RenderConfig, UpscaleConfig, ExportMode } from "./domain";
+import type { BrushStroke, InputItem, RenderConfig, UpscaleConfig, ExportMode } from "./domain";
 
 export interface ImportPathsRequest {
   paths: string[];
@@ -20,6 +20,7 @@ export interface RenderPreviewRequest {
   sourcePath: string;
   renderConfig: RenderConfig;
   upscaleConfig: UpscaleConfig;
+  brushStrokes: BrushStroke[];
   previewSize: number;
 }
 
@@ -35,6 +36,7 @@ export interface ExportIcoItemRequest {
   sourcePath: string;
   renderConfig: RenderConfig;
   upscaleConfig: UpscaleConfig;
+  brushStrokes: BrushStroke[];
 }
 
 export interface ExportIcoRequest {
@@ -57,6 +59,7 @@ export interface ApplyToLnkItemRequest {
   lnkPath: string;
   renderConfig: RenderConfig;
   upscaleConfig: UpscaleConfig;
+  brushStrokes: BrushStroke[];
 }
 
 export interface ApplyToLnkRequest {

@@ -18,6 +18,21 @@ impl LinearPremultipliedImage {
         }
     }
 
+    pub fn from_srgb_rgba8(image: &RgbaImage) -> Self {
+        let mut result = Self::transparent(image.width(), image.height());
+        for (idx, pixel) in image.pixels().enumerate() {
+            let [r, g, b, a] = pixel.0;
+            let alpha = a as f32 / 255.0;
+            result.data[idx] = [
+                super::color::srgb_channel_to_linear(r as f32 / 255.0) * alpha,
+                super::color::srgb_channel_to_linear(g as f32 / 255.0) * alpha,
+                super::color::srgb_channel_to_linear(b as f32 / 255.0) * alpha,
+                alpha,
+            ];
+        }
+        result
+    }
+
     pub fn alpha_plane(&self) -> super::mask::AlphaMask {
         self.data.iter().map(|p| p[3]).collect()
     }

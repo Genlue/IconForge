@@ -105,7 +105,9 @@ pub fn hicon_to_rgba(hicon: HICON) -> Result<RgbaImage, AppError> {
         );
     }
 
-    // Copy pixel data (BGRA -> RGBA)
+    // Copy pixel data (BGRA -> RGBA). The DIB produced by DrawIconEx is
+    // straight-alpha, not premultiplied-alpha. Unpremultiplying it here
+    // creates bright/white halos around antialiased icon edges.
     let dib_slice =
         unsafe { std::slice::from_raw_parts(dib_bits as *const u8, (width * height * 4) as usize) };
 
@@ -115,14 +117,7 @@ pub fn hicon_to_rgba(hicon: HICON) -> Result<RgbaImage, AppError> {
         let g = chunk[1];
         let r = chunk[2];
         let a = chunk[3];
-        if a > 0 {
-            let r_u = ((r as u32 * 255 + a as u32 / 2) / a as u32).min(255) as u8;
-            let g_u = ((g as u32 * 255 + a as u32 / 2) / a as u32).min(255) as u8;
-            let b_u = ((b as u32 * 255 + a as u32 / 2) / a as u32).min(255) as u8;
-            rgba.extend_from_slice(&[r_u, g_u, b_u, a]);
-        } else {
-            rgba.extend_from_slice(&[0, 0, 0, 0]);
-        }
+        rgba.extend_from_slice(&[r, g, b, a]);
     }
 
     RgbaImage::from_raw(width, height, rgba)

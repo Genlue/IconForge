@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use super::config::{RenderConfig, UpscaleConfig};
+use super::config::{BrushStroke, RenderConfig, UpscaleConfig};
 use super::input::ExportMode;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -15,6 +15,8 @@ pub struct RenderPreviewRequest {
     pub source_path: String,
     pub render_config: RenderConfig,
     pub upscale_config: UpscaleConfig,
+    #[serde(default)]
+    pub brush_strokes: Vec<BrushStroke>,
     pub preview_size: u32,
 }
 
@@ -31,6 +33,8 @@ pub struct ExportIcoItemRequest {
     pub source_path: String,
     pub render_config: RenderConfig,
     pub upscale_config: UpscaleConfig,
+    #[serde(default)]
+    pub brush_strokes: Vec<BrushStroke>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -46,4 +50,6 @@ pub struct ApplyToLnkItemRequest {
     pub lnk_path: String,
     pub render_config: RenderConfig,
     pub upscale_config: UpscaleConfig,
+    #[serde(default)]
+    pub brush_strokes: Vec<BrushStroke>,
 }

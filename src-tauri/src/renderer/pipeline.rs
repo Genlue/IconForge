@@ -1,6 +1,6 @@
 use image::RgbaImage;
 
-use crate::domain::config::{BackplateType, ForegroundFit, IconShape, RenderConfig};
+use crate::domain::config::{BackplateType, BrushStroke, ForegroundFit, IconShape, RenderConfig};
 use crate::error::app_error::AppError;
 
 use super::color::{parse_hex_rgba, LinearRgba};
@@ -284,5 +284,23 @@ pub fn render_icon_set(
         }
     }
 
+    Ok(results)
+}
+
+pub fn render_icon_set_with_brushes(
+    source: &RgbaImage,
+    config: &ValidatedRenderConfig,
+    brush_strokes: &[BrushStroke],
+) -> Result<Vec<(u32, RgbaImage)>, AppError> {
+    let master =
+        super::brush::composite_brush_strokes(render_master(source, config)?, brush_strokes)?;
+    let mut results = Vec::with_capacity(super::ICO_SIZES.len());
+    for &size in &super::ICO_SIZES {
+        if size == 256 {
+            results.push((size, master.clone()));
+        } else {
+            results.push((size, resize_from_master(&master, size)?));
+        }
+    }
     Ok(results)
 }

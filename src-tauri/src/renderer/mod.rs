@@ -1,3 +1,4 @@
+pub mod brush;
 pub mod color;
 pub mod composite;
 pub mod mask;
@@ -12,4 +13,8 @@ pub const MASTER_SIZE: u32 = 256;
 // Windows shell sizes used at common display scaling levels.
 pub const ICO_SIZES: [u32; 8] = [256, 128, 64, 48, 32, 24, 20, 16];
 
-pub use pipeline::{render_icon_set, render_master, validate_config, ValidatedRenderConfig};
+pub use brush::composite_brush_strokes;
+pub use pipeline::{
+    render_icon_set, render_icon_set_with_brushes, render_master, validate_config,
+    ValidatedRenderConfig,
+};

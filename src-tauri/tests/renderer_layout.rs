@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use iconforge_lib::domain::config::*;
-    use iconforge_lib::renderer::{render_master, validate_config};
+    use iconforge_lib::renderer::{composite_brush_strokes, render_master, validate_config};
     use image::{Rgba, RgbaImage};
 
     fn config() -> RenderConfig {
@@ -149,5 +149,28 @@ mod tests {
         assert_eq!(rendered.get_pixel(128, 16).0[3], 255);
         assert_eq!(rendered.get_pixel(16, 16).0[3], 0);
         assert_eq!(rendered.get_pixel(68, 16).0[3], 255);
+    }
+
+    #[test]
+    fn brush_strokes_are_composited_into_the_master_image() {
+        let source = RgbaImage::new(1, 1);
+        let rendered = render_master(&source, &validate_config(&config()).unwrap()).unwrap();
+        let painted = composite_brush_strokes(
+            rendered,
+            &[BrushStroke {
+                points: vec![
+                    BrushPoint { x: 32.0, y: 128.0 },
+                    BrushPoint { x: 224.0, y: 128.0 },
+                ],
+                color: "#FF0000FF".into(),
+                size: 16.0,
+                opacity: 1.0,
+            }],
+        )
+        .unwrap();
+
+        assert!(painted.get_pixel(128, 128).0[0] > 240);
+        assert!(painted.get_pixel(128, 128).0[3] > 240);
+        assert_eq!(painted.get_pixel(128, 32).0[3], 0);
     }
 }

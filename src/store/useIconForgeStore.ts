@@ -2,6 +2,9 @@ import { create } from "zustand";
 import type {
   InputItem,
   ItemConfig,
+  BrushStroke,
+  ColorPickTarget,
+  PreviewTool,
   RenderConfig,
   OuterShadowConfig,
   StrokeConfig,
@@ -22,6 +25,8 @@ export interface IconForgeState {
   items: InputItem[];
   selectedItemId: string | null;
   itemConfigs: Record<string, ItemConfig>;
+  previewTool: PreviewTool;
+  colorPickTarget: ColorPickTarget | null;
   isImporting: boolean;
   isExporting: boolean;
   dragActive: boolean;
@@ -38,6 +43,13 @@ export interface IconForgeState {
   updateUpscaleConfig(patch: Partial<UpscaleConfig>): void;
   applyPreset(presetId: string): void;
   applyCurrentConfigToAll(): void;
+  setPreviewTool(tool: PreviewTool): void;
+  startColorPicking(target: ColorPickTarget): void;
+  applyPickedColor(rgbHex: string): void;
+  addBrushStroke(stroke: BrushStroke): void;
+  undoBrushStroke(): void;
+  clearBrushStrokes(): void;
+  updateBrushSettings(patch: { color?: string; size?: number }): void;
   exportAsIco(): Promise<void>;
   exportAllAsIco(): Promise<void>;
   applyToSelectedLnks(): Promise<void>;
@@ -49,6 +61,8 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
   items: [],
   selectedItemId: null,
   itemConfigs: {},
+  previewTool: "none",
+  colorPickTarget: null,
   isImporting: false,
   isExporting: false,
   dragActive: false,
@@ -172,10 +186,98 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
     });
   },
 
+  setPreviewTool: (previewTool) => set({ previewTool, colorPickTarget: null }),
+
+  startColorPicking: (colorPickTarget) => set({
+    previewTool: "eyedropper",
+    colorPickTarget,
+  }),
+
+  applyPickedColor: (rgbHex) => {
+    set((state) => updateSelectedConfig(state, (config) => {
+      const target = state.colorPickTarget;
+      if (!target) return config;
+      const withAlpha = (current: string) => `${rgbHex}${current.slice(7, 9) || "FF"}`;
+      if (target === "brush") {
+        return { ...config, brushColor: withAlpha(config.brushColor) };
+      }
+      if (target === "shadow") {
+        return {
+          ...config,
+          renderConfig: {
+            ...config.renderConfig,
+            outerShadow: {
+              ...config.renderConfig.outerShadow,
+              color: withAlpha(config.renderConfig.outerShadow.color),
+            },
+          },
+          activePresetId: null,
+        };
+      }
+      if (target === "stroke") {
+        return {
+          ...config,
+          renderConfig: {
+            ...config.renderConfig,
+            stroke: {
+              ...config.renderConfig.stroke,
+              color: withAlpha(config.renderConfig.stroke.color),
+            },
+          },
+          activePresetId: null,
+        };
+      }
+      const key = target === "backplate"
+        ? "backplateColor"
+        : target === "gradientStart"
+          ? "gradientStartColor"
+          : "gradientEndColor";
+      return {
+        ...config,
+        renderConfig: {
+          ...config.renderConfig,
+          [key]: withAlpha(config.renderConfig[key]),
+        },
+        activePresetId: null,
+      };
+    }));
+    set({ previewTool: "none", colorPickTarget: null });
+  },
+
+  addBrushStroke: (stroke) => {
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
+      brushStrokes: [...config.brushStrokes, cloneBrushStroke(stroke)],
+      activePresetId: null,
+    })));
+  },
+
+  undoBrushStroke: () => {
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
+      brushStrokes: config.brushStrokes.slice(0, -1),
+    })));
+  },
+
+  clearBrushStrokes: () => {
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
+      brushStrokes: [],
+    })));
+  },
+
+  updateBrushSettings: (patch) => {
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
+      brushColor: patch.color ?? config.brushColor,
+      brushSize: patch.size ?? config.brushSize,
+    })));
+  },
+
   exportAsIco: async () => {
     const { items, itemConfigs, selectedItemId } = get();
     const selectedItems = items
-      .filter((i) => selectedPathsFilter(i, items, selectedItemId))
+      .filter((i) => selectedPathsFilter(i, items, selectedItemId));
     await exportItemsAsIco(selectedItems, itemConfigs, set);
   },
 
@@ -194,6 +296,7 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
           lnkPath: item.sourcePath,
           renderConfig: config.renderConfig,
           upscaleConfig: config.upscaleConfig,
+          brushStrokes: config.brushStrokes,
         }] : [];
       });
     set({ isExporting: true, error: null, lastExportResult: null });
@@ -224,6 +327,7 @@ async function exportItemsAsIco(
       sourcePath: item.sourcePath,
       renderConfig: config.renderConfig,
       upscaleConfig: config.upscaleConfig,
+      brushStrokes: config.brushStrokes,
     }] : [];
   });
   set({ isExporting: true, error: null, lastExportResult: null });
@@ -245,6 +349,9 @@ function createDefaultItemConfig(): ItemConfig {
   return {
     renderConfig: cloneRenderConfig(DEFAULT_RENDER_CONFIG),
     upscaleConfig: { ...DEFAULT_UPSCALE_CONFIG },
+    brushStrokes: [],
+    brushColor: "#FF3B30FF",
+    brushSize: 8,
     activePresetId: "macos-classic-rounded",
   };
 }
@@ -261,7 +368,17 @@ function cloneItemConfig(config: ItemConfig): ItemConfig {
   return {
     renderConfig: cloneRenderConfig(config.renderConfig),
     upscaleConfig: { ...config.upscaleConfig },
+    brushStrokes: config.brushStrokes.map(cloneBrushStroke),
+    brushColor: config.brushColor,
+    brushSize: config.brushSize,
     activePresetId: config.activePresetId,
+  };
+}
+
+function cloneBrushStroke(stroke: BrushStroke): BrushStroke {
+  return {
+    ...stroke,
+    points: stroke.points.map((point) => ({ ...point })),
   };
 }
 

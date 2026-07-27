@@ -32,6 +32,7 @@ export function BackplateSection(props: BackplateSectionProps): JSX.Element {
           id="bp-color"
           label="背板颜色"
           value={config.backplateColor}
+          pickTarget="backplate"
           onChange={(v) => onChange({ backplateColor: v })}
         />
       )}
@@ -41,12 +42,14 @@ export function BackplateSection(props: BackplateSectionProps): JSX.Element {
             id="grad-start"
             label="渐变起点"
             value={config.gradientStartColor}
+            pickTarget="gradientStart"
             onChange={(v) => onChange({ gradientStartColor: v })}
           />
           <ColorField
             id="grad-end"
             label="渐变终点"
             value={config.gradientEndColor}
+            pickTarget="gradientEnd"
             onChange={(v) => onChange({ gradientEndColor: v })}
           />
           <RangeField

@@ -1,15 +1,20 @@
 import { useCallback } from "react";
 import { parseHexRgba, replaceRgb, replaceAlpha } from "../../lib/color";
+import type { ColorPickTarget } from "../../types/domain";
+import { useIconForgeStore } from "../../store/useIconForgeStore";
 
 export interface ColorFieldProps {
   id: string;
   label: string;
   value: string;
   disabled?: boolean;
+  pickTarget?: ColorPickTarget;
   onChange(value: string): void;
 }
 
 export function ColorField(props: ColorFieldProps): JSX.Element {
+  const startColorPicking = useIconForgeStore((s) => s.startColorPicking);
+  const activeTarget = useIconForgeStore((s) => s.colorPickTarget);
   const { r, g, b, a } = parseHexRgba(props.value);
   const rgbHex = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 
@@ -44,6 +49,21 @@ export function ColorField(props: ColorFieldProps): JSX.Element {
           onChange={handleColorChange}
           className="h-7 w-10 cursor-pointer rounded border border-[var(--border-hairline)]"
         />
+        {props.pickTarget && (
+          <button
+            type="button"
+            disabled={props.disabled}
+            onClick={() => startColorPicking(props.pickTarget!)}
+            className={`h-7 rounded border px-2 text-[11px] transition-colors ${
+              activeTarget === props.pickTarget
+                ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                : "border-[var(--border-hairline)] bg-white/50 text-[var(--text-secondary)] hover:bg-white/80"
+            } disabled:opacity-40`}
+            title="然后在预览图上点击取色"
+          >
+            取色
+          </button>
+        )}
         <input
           type="range"
           min={0}

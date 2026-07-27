@@ -23,7 +23,10 @@ pub fn enumerate_group_icons(module: HMODULE) -> Result<Vec<ResourceName>, AppEr
         let names = unsafe { &mut *(lparam as *mut Vec<ResourceName>) };
         let ptr = lpname.as_ptr();
         if (ptr as usize) >> 16 == 0 {
-            let id = (ptr as u16).to_be();
+            // MAKEINTRESOURCE stores the numeric resource id in the low word.
+            // Keep it in native numeric form; converting to big-endian here
+            // makes PE icon lookup fail for ordinary ids such as 1.
+            let id = ptr as u16;
             names.push(ResourceName::Id(id));
         } else {
             let mut len = 0;
@@ -61,7 +64,7 @@ pub fn load_resource_bytes(
     name: &ResourceName,
 ) -> Result<Vec<u8>, AppError> {
     let name_ptr = match name {
-        ResourceName::Id(id) => PCWSTR::from_raw(id.to_be() as usize as *const u16),
+        ResourceName::Id(id) => PCWSTR::from_raw(*id as usize as *const u16),
         ResourceName::Name(chars) => PCWSTR::from_raw(chars.as_ptr()),
     };
 
