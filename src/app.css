@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --surface-app: rgba(238, 241, 247, 0.92);
+  --surface-app: #EEF1F7;
   --surface-glass: rgba(255, 255, 255, 0.62);
   --surface-glass-strong: rgba(255, 255, 255, 0.78);
   --border-hairline: rgba(15, 23, 42, 0.10);

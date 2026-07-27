@@ -1,5 +1,4 @@
 import { useIconForgeStore } from "../../store/useIconForgeStore";
-import { TitleBar } from "./TitleBar";
 import { StatusBar } from "./StatusBar";
 import { PreviewPane } from "../preview/PreviewPane";
 import { ParameterPanel } from "../controls/ParameterPanel";
@@ -18,9 +17,8 @@ export function AppShell(): JSX.Element {
       style={{
         display: "grid",
         gridTemplateColumns: "minmax(520px, 1fr) 360px",
-        gridTemplateRows: "52px 1fr 184px 24px",
+        gridTemplateRows: "1fr 184px 24px",
         gridTemplateAreas: `
-          "title title"
           "preview controls"
           "batch controls"
           "status status"
@@ -33,9 +31,6 @@ export function AppShell(): JSX.Element {
         background: "var(--surface-app)",
       }}
     >
-      <div style={{ gridArea: "title" }}>
-        <TitleBar />
-      </div>
       <div style={{ gridArea: "preview" }}>
         <PreviewPane />
       </div>

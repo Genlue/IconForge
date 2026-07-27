@@ -16,7 +16,7 @@ export function BatchTray(): JSX.Element {
         {items.length === 0 && (
           <div className="flex w-full items-center justify-center">
             <span className="text-xs text-[var(--text-secondary)]">
-              暂无导入项 — 拖入文件开始
+              暂无导入项 — 拖入文件或点击导入
             </span>
           </div>
         )}
