@@ -31,6 +31,18 @@ mod tests {
                 width: 1.0,
                 color: "#0000001F".into(),
             },
+            gloss: GlossConfig {
+                enabled: false,
+                width: 3.0,
+                strength: 0.7,
+                light_color: "#FFFFFFFF".into(),
+                dark_color: "#00000080".into(),
+            },
+            auto_cutout: AutoCutoutConfig {
+                enabled: false,
+                tolerance: 20.0,
+                feather: 8.0,
+            },
         }
     }
 

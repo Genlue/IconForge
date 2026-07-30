@@ -67,7 +67,7 @@ export function PreviewPane(): JSX.Element {
       applyPickedColor(`#${toHex(pixel[0] ?? 0)}${toHex(pixel[1] ?? 0)}${toHex(pixel[2] ?? 0)}`);
       return;
     }
-    if (previewTool !== "brush") return;
+    if (previewTool !== "brush" && previewTool !== "eraser") return;
     event.currentTarget.setPointerCapture(event.pointerId);
     setDrawingPoints([point]);
     redrawCanvas(event.currentTarget, imageRef.current, {
@@ -75,11 +75,13 @@ export function PreviewPane(): JSX.Element {
       color: itemConfig.brushColor,
       size: itemConfig.brushSize,
       opacity: 1,
+      mode: previewTool === "eraser" ? "erase" : "paint",
+      clipToMask: itemConfig.brushClipToMask,
     });
   }, [applyPickedColor, itemConfig, pointFromEvent, previewTool]);
 
   const handlePointerMove = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (previewTool !== "brush" || drawingPoints.length === 0 || !imageRef.current || !itemConfig) return;
+    if ((previewTool !== "brush" && previewTool !== "eraser") || drawingPoints.length === 0 || !imageRef.current || !itemConfig) return;
     const points = [...drawingPoints, pointFromEvent(event)];
     setDrawingPoints(points);
     redrawCanvas(event.currentTarget, imageRef.current, {
@@ -87,11 +89,13 @@ export function PreviewPane(): JSX.Element {
       color: itemConfig.brushColor,
       size: itemConfig.brushSize,
       opacity: 1,
+      mode: previewTool === "eraser" ? "erase" : "paint",
+      clipToMask: itemConfig.brushClipToMask,
     });
   }, [drawingPoints, itemConfig, pointFromEvent, previewTool]);
 
   const finishStroke = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (previewTool !== "brush" || drawingPoints.length === 0 || !itemConfig) return;
+    if ((previewTool !== "brush" && previewTool !== "eraser") || drawingPoints.length === 0 || !itemConfig) return;
     const points = drawingPoints.length === 1
       ? [drawingPoints[0]!, pointFromEvent(event)]
       : drawingPoints;
@@ -100,6 +104,8 @@ export function PreviewPane(): JSX.Element {
       color: itemConfig.brushColor,
       size: itemConfig.brushSize,
       opacity: 1,
+      mode: previewTool === "eraser" ? "erase" : "paint",
+      clipToMask: itemConfig.brushClipToMask,
     });
     setDrawingPoints([]);
   }, [addBrushStroke, drawingPoints, itemConfig, pointFromEvent, previewTool]);
@@ -108,6 +114,8 @@ export function PreviewPane(): JSX.Element {
     ? "crosshair"
     : previewTool === "brush"
       ? "crosshair"
+      : previewTool === "eraser"
+        ? "cell"
       : "default";
 
   return (
@@ -156,6 +164,7 @@ export function PreviewPane(): JSX.Element {
           <span>主图 256×256</span>
           {previewTool === "eyedropper" && <span className="text-[var(--accent)]">点击预览取色</span>}
           {previewTool === "brush" && <span className="text-[var(--accent)]">在预览上拖动绘制</span>}
+          {previewTool === "eraser" && <span className="text-[var(--accent)]">在预览上拖动擦除</span>}
         </div>
       )}
     </div>
@@ -173,7 +182,8 @@ function redrawCanvas(
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
   if (!stroke || stroke.points.length === 0) return;
   context.save();
-  context.strokeStyle = stroke.color.slice(0, 7);
+  context.globalCompositeOperation = stroke.mode === "erase" ? "destination-out" : "source-over";
+  context.strokeStyle = stroke.mode === "erase" ? "rgba(0,0,0,1)" : stroke.color.slice(0, 7);
   const colorAlpha = Number.parseInt(stroke.color.slice(7, 9) || "FF", 16) / 255;
   context.globalAlpha = stroke.opacity * colorAlpha;
   context.lineWidth = stroke.size * canvas.width / 256;
@@ -186,6 +196,12 @@ function redrawCanvas(
   }
   context.stroke();
   context.restore();
+  if (stroke.mode === "paint" && stroke.clipToMask) {
+    context.save();
+    context.globalCompositeOperation = "destination-in";
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    context.restore();
+  }
 }
 
 function toHex(value: number): string {

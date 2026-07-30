@@ -24,6 +24,7 @@ export enum ForegroundFit {
 
 export enum ExportMode {
   ExportAsIco = "ExportAsIco",
+  ExportAsPng = "ExportAsPng",
   ApplyToLnk = "ApplyToLnk",
 }
 
@@ -39,6 +40,20 @@ export interface OuterShadowConfig {
 export interface StrokeConfig {
   width: number;
   color: string;
+}
+
+export interface GlossConfig {
+  enabled: boolean;
+  width: number;
+  strength: number;
+  lightColor: string;
+  darkColor: string;
+}
+
+export interface AutoCutoutConfig {
+  enabled: boolean;
+  tolerance: number;
+  feather: number;
 }
 
 export interface RenderConfig {
@@ -58,6 +73,8 @@ export interface RenderConfig {
   gradientAngleDegrees: number;
   outerShadow: OuterShadowConfig;
   stroke: StrokeConfig;
+  gloss: GlossConfig;
+  autoCutout: AutoCutoutConfig;
 }
 
 export interface InputItem {
@@ -91,7 +108,11 @@ export interface BrushStroke {
   color: string;
   size: number;
   opacity: number;
+  mode: BrushMode;
+  clipToMask: boolean;
 }
+
+export type BrushMode = "paint" | "erase";
 
 export type ColorPickTarget =
   | "brush"
@@ -99,9 +120,11 @@ export type ColorPickTarget =
   | "gradientStart"
   | "gradientEnd"
   | "shadow"
-  | "stroke";
+  | "stroke"
+  | "glossLight"
+  | "glossDark";
 
-export type PreviewTool = "none" | "brush" | "eyedropper";
+export type PreviewTool = "none" | "brush" | "eraser" | "eyedropper";
 
 export interface ItemConfig {
   renderConfig: RenderConfig;
@@ -109,6 +132,8 @@ export interface ItemConfig {
   brushStrokes: BrushStroke[];
   brushColor: string;
   brushSize: number;
+  brushMode: BrushMode;
+  brushClipToMask: boolean;
   activePresetId: string | null;
 }
 

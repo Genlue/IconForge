@@ -55,7 +55,7 @@ pub fn next_available_path(
     if !path.exists() {
         return Ok(path);
     }
-    for i in 2..10000 {
+    for i in 1..10000 {
         path = directory.join(format!("{} ({}).{}", stem, i, extension));
         if !path.exists() {
             return Ok(path);
@@ -68,3 +68,17 @@ pub fn next_available_path(
 
 // We need WriteAll trait
 use std::io::Write;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn uses_parenthesized_sequence_for_existing_names() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("icon.png"), b"x").unwrap();
+        std::fs::write(dir.path().join("icon (1).png"), b"x").unwrap();
+        let path = next_available_path(dir.path(), "icon", "png").unwrap();
+        assert_eq!(path.file_name().unwrap(), "icon (2).png");
+    }
+}

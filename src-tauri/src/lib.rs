@@ -17,6 +17,7 @@ pub fn run() {
             commands::import_paths,
             commands::render_preview,
             commands::export_ico,
+            commands::export_png,
             commands::apply_to_lnk,
         ])
         .run(tauri::generate_context!())

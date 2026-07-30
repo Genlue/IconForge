@@ -13,6 +13,7 @@ pub enum InputFileType {
 #[serde(rename_all = "PascalCase")]
 pub enum ExportMode {
     ExportAsIco,
+    ExportAsPng,
     ApplyToLnk,
 }
 

@@ -1,6 +1,8 @@
 pub mod brush;
 pub mod color;
 pub mod composite;
+pub mod cutout;
+pub mod gloss;
 pub mod mask;
 pub mod pipeline;
 pub mod resize;

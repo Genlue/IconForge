@@ -6,6 +6,7 @@ import type {
   RenderPreviewResponse,
   ExportIcoRequest,
   ExportIcoResponse,
+  ExportPngRequest,
   ApplyToLnkRequest,
   ApplyToLnkResponse,
 } from "../types/commands";
@@ -17,6 +18,8 @@ export const commands = {
     invoke<RenderPreviewResponse>("render_preview", { request }),
   exportIco: (request: ExportIcoRequest) =>
     invoke<ExportIcoResponse>("export_ico", { request }),
+  exportPng: (request: ExportPngRequest) =>
+    invoke<ExportIcoResponse>("export_png", { request }),
   applyToLnk: (request: ApplyToLnkRequest) =>
     invoke<ApplyToLnkResponse>("apply_to_lnk", { request }),
 };

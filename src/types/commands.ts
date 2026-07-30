@@ -44,6 +44,11 @@ export interface ExportIcoRequest {
   exportMode: ExportMode.ExportAsIco;
 }
 
+export interface ExportPngRequest {
+  items: ExportIcoItemRequest[];
+  rawSource: boolean;
+}
+
 export interface ExportedFile {
   sourcePath: string;
   outputPath: string;

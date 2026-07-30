@@ -9,6 +9,8 @@ import { StrokeSection } from "./StrokeSection";
 import { UpscaleSection } from "./UpscaleSection";
 import { ExportActions } from "../export/ExportActions";
 import { BrushSection } from "./BrushSection";
+import { GlossSection } from "./GlossSection";
+import { CutoutSection } from "./CutoutSection";
 import { DEFAULT_RENDER_CONFIG, DEFAULT_UPSCALE_CONFIG } from "../../constants/defaults";
 
 export function ParameterPanel(): JSX.Element {
@@ -65,6 +67,10 @@ export function ParameterPanel(): JSX.Element {
 
         <hr className="border-[var(--border-hairline)]" />
 
+        <CutoutSection value={renderConfig.autoCutout} onChange={(autoCutout) => updateRenderConfig({ autoCutout: { ...renderConfig.autoCutout, ...autoCutout } })} />
+
+        <hr className="border-[var(--border-hairline)]" />
+
         {/* Foreground */}
         <ForegroundSection
           config={renderConfig}
@@ -102,6 +108,10 @@ export function ParameterPanel(): JSX.Element {
           value={renderConfig.stroke}
           onChange={updateStroke}
         />
+
+        <hr className="border-[var(--border-hairline)]" />
+
+        <GlossSection value={renderConfig.gloss} onChange={(gloss) => updateRenderConfig({ gloss: { ...renderConfig.gloss, ...gloss } })} />
 
         <hr className="border-[var(--border-hairline)]" />
 

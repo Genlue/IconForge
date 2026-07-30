@@ -28,6 +28,18 @@ export const DEFAULT_RENDER_CONFIG: Readonly<RenderConfig> = {
     width: 0,
     color: "#00000000",
   },
+  gloss: {
+    enabled: false,
+    width: 3,
+    strength: 0.7,
+    lightColor: "#FFFFFFFF",
+    darkColor: "#00000080",
+  },
+  autoCutout: {
+    enabled: false,
+    tolerance: 20,
+    feather: 8,
+  },
 };
 
 export const DEFAULT_UPSCALE_CONFIG: Readonly<UpscaleConfig> = {

@@ -52,7 +52,7 @@ export function ExportResultDialog(props: ExportResultDialogProps): JSX.Element 
           {isIcoResult ? (
             <>
               {result.files.map((file) => (
-                <ResultRow key={file.outputPath} label="ICO 已保存" path={file.outputPath} />
+                <ResultRow key={file.outputPath} label="文件已保存" path={file.outputPath} />
               ))}
               {result.warnings.map((warning, index) => (
                 <ResultRow key={`${index}-${warning}`} label="提示" path={warning} warning />

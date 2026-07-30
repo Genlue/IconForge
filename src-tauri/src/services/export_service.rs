@@ -6,7 +6,9 @@ use tauri_plugin_dialog::DialogExt;
 
 use crate::domain::config::{BrushStroke, RenderConfig, UpscaleConfig};
 use crate::domain::input::ExportMode;
-use crate::domain::request::{ApplyToLnkRequest, ExportIcoItemRequest, ExportIcoRequest};
+use crate::domain::request::{
+    ApplyToLnkRequest, ExportIcoItemRequest, ExportIcoRequest, ExportPngRequest,
+};
 use crate::domain::response::{
     AppliedShortcut, ApplyToLnkResponse, ExportIcoResponse, ExportedFile, RejectedPath,
 };
@@ -73,9 +75,10 @@ pub fn export_ico_batch(
 
         match dialog.blocking_save_file() {
             Some(output_path) => {
-                let output_path = output_path.into_path().map_err(|e| {
+                let requested_path = output_path.into_path().map_err(|e| {
                     AppError::IoFailed(format!("invalid path from dialog: {}", e), None)
                 })?;
+                let output_path = available_requested_path(&requested_path)?;
                 let ico_bytes = prepare_ico(
                     app,
                     path,
@@ -156,6 +159,129 @@ pub fn export_ico_batch(
             warnings,
         })
     }
+}
+
+pub fn export_png_batch(
+    app: &AppHandle,
+    request: ExportPngRequest,
+    state: &AppState,
+) -> Result<ExportIcoResponse, AppError> {
+    if request.items.is_empty() {
+        return Err(AppError::InvalidArgument("items must not be empty".into()));
+    }
+    let mut jobs = Vec::new();
+    let mut seen = HashSet::new();
+    for item in request.items {
+        if let Ok(path) = std::fs::canonicalize(Path::new(&item.source_path)) {
+            if seen.insert(path.clone()) {
+                jobs.push((path, item));
+            }
+        }
+    }
+    if jobs.is_empty() {
+        return Err(AppError::InvalidArgument("no valid source paths".into()));
+    }
+
+    let output_dir = if jobs.len() == 1 {
+        None
+    } else {
+        match app.dialog().file().blocking_pick_folder() {
+            Some(path) => Some(
+                path.into_path()
+                    .map_err(|e| AppError::IoFailed(e.to_string(), None))?,
+            ),
+            None => {
+                return Ok(ExportIcoResponse {
+                    cancelled: true,
+                    files: vec![],
+                    warnings: vec![],
+                })
+            }
+        }
+    };
+    let mut files = Vec::new();
+    let mut warnings = Vec::new();
+    for (path, item) in jobs {
+        let stem = sanitize_filename(path.file_stem().and_then(|s| s.to_str()).unwrap_or("icon"));
+        let output_path = if let Some(dir) = &output_dir {
+            crate::output::atomic_file::next_available_path(dir, &stem, "png")?
+        } else {
+            let Some(selected) = app
+                .dialog()
+                .file()
+                .add_filter("PNG Image", &["png"])
+                .set_file_name(format!("{}.png", stem))
+                .blocking_save_file()
+            else {
+                return Ok(ExportIcoResponse {
+                    cancelled: true,
+                    files: vec![],
+                    warnings: vec![],
+                });
+            };
+            available_requested_path(
+                &selected
+                    .into_path()
+                    .map_err(|e| AppError::IoFailed(e.to_string(), None))?,
+            )?
+        };
+
+        let processed = (|| -> Result<image::RgbaImage, AppError> {
+            if request.raw_source {
+                let extractor = crate::extractor::IconExtractor::new(&state.com_sta_worker);
+                return Ok(extractor.extract(&path)?.pixels);
+            }
+            let source = super::source_service::load_processed_source(
+                app,
+                &path,
+                &item.upscale_config,
+                state,
+            )?;
+            let validated = renderer::validate_config(&item.render_config)?;
+            renderer::composite_brush_strokes(
+                renderer::render_master(&source, &validated)?,
+                &item.brush_strokes,
+            )
+        })();
+        match processed.and_then(|image| write_png_atomic(&output_path, &image)) {
+            Ok(()) => files.push(ExportedFile {
+                source_path: path.to_string_lossy().to_string(),
+                output_path: output_path.to_string_lossy().to_string(),
+            }),
+            Err(error) => warnings.push(format!("failed to export {}: {}", path.display(), error)),
+        }
+    }
+    Ok(ExportIcoResponse {
+        cancelled: false,
+        files,
+        warnings,
+    })
+}
+
+fn write_png_atomic(path: &Path, image: &image::RgbaImage) -> Result<(), AppError> {
+    use image::ImageEncoder;
+    let mut bytes = Vec::new();
+    image::codecs::png::PngEncoder::new(&mut bytes)
+        .write_image(
+            image.as_raw(),
+            image.width(),
+            image.height(),
+            image::ExtendedColorType::Rgba8,
+        )
+        .map_err(|e| AppError::RenderFailed(format!("PNG encode failed: {}", e)))?;
+    crate::output::atomic_file::write_bytes_atomic(path, &bytes, false)
+}
+
+fn available_requested_path(path: &Path) -> Result<PathBuf, AppError> {
+    if !path.exists() {
+        return Ok(path.to_path_buf());
+    }
+    let directory = path
+        .parent()
+        .ok_or_else(|| AppError::InvalidArgument("path has no parent".into()))?;
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("icon");
+    let extension = path.extension().and_then(|s| s.to_str()).unwrap_or("ico");
+    crate::output::atomic_file::next_available_path(directory, stem, extension)
 }
 
 pub fn apply_to_shortcuts(

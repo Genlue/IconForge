@@ -22,18 +22,10 @@ export function BrushSection(): JSX.Element {
           {config?.brushStrokes.length ?? 0} 笔
         </span>
       </div>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => setPreviewTool(tool === "brush" ? "none" : "brush")}
-        className={`w-full rounded-lg border px-3 py-2 text-xs transition-colors ${
-          tool === "brush"
-            ? "border-[var(--accent)] bg-[var(--accent)] text-white"
-            : "border-[var(--border-hairline)] bg-white/40 text-[var(--text-primary)] hover:bg-white/60"
-        } disabled:opacity-40`}
-      >
-        {tool === "brush" ? "结束绘制" : "在预览上绘制"}
-      </button>
+      <div className="grid grid-cols-2 gap-2">
+        <button type="button" disabled={disabled} onClick={() => { updateBrushSettings({ mode: "paint" }); setPreviewTool(tool === "brush" ? "none" : "brush"); }} className={`rounded-lg border px-3 py-2 text-xs ${tool === "brush" ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--border-hairline)] bg-white/40"}`}>画笔</button>
+        <button type="button" disabled={disabled} onClick={() => { updateBrushSettings({ mode: "erase" }); setPreviewTool(tool === "eraser" ? "none" : "eraser"); }} className={`rounded-lg border px-3 py-2 text-xs ${tool === "eraser" ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--border-hairline)] bg-white/40"}`}>涂抹擦除</button>
+      </div>
       <ColorField
         id="brush-color"
         label="画笔颜色"
@@ -52,6 +44,10 @@ export function BrushSection(): JSX.Element {
         disabled={disabled}
         onChange={(size) => updateBrushSettings({ size })}
       />
+      <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+        <input type="checkbox" checked={config?.brushClipToMask ?? true} disabled={disabled} onChange={(event) => updateBrushSettings({ clipToMask: event.target.checked })} />
+        笔迹不超出当前图标外围
+      </label>
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
@@ -71,7 +67,7 @@ export function BrushSection(): JSX.Element {
         </button>
       </div>
       <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
-        笔迹属于当前图标，并会进入预览和最终 ICO。
+        画笔和擦除笔迹属于当前图标，并会进入预览、PNG 和最终 ICO。
       </p>
     </section>
   );

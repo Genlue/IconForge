@@ -7,9 +7,13 @@ export function ExportActions(): JSX.Element {
   const lastExportResult = useIconForgeStore((s) => s.lastExportResult);
   const exportAsIco = useIconForgeStore((s) => s.exportAsIco);
   const exportAllAsIco = useIconForgeStore((s) => s.exportAllAsIco);
+  const exportAsPng = useIconForgeStore((s) => s.exportAsPng);
+  const exportAllAsPng = useIconForgeStore((s) => s.exportAllAsPng);
+  const extractIcoAsPng = useIconForgeStore((s) => s.extractIcoAsPng);
   const applyToSelectedLnks = useIconForgeStore((s) => s.applyToSelectedLnks);
   const hasLnks = items.some((i) => i.fileType === "Lnk");
   const hasIcoCapable = items.length > 0;
+  const hasIcoSources = items.some((item) => item.sourcePath.toLowerCase().endsWith(".ico"));
 
   return (
     <>
@@ -29,6 +33,11 @@ export function ExportActions(): JSX.Element {
         >
           {isExporting ? "导出中..." : "全部导出"}
         </button>
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={exportAsPng} disabled={!hasIcoCapable || isExporting} className="rounded-lg border border-[var(--accent)] bg-[var(--accent)]/10 px-2 py-2 text-xs text-[var(--accent)] disabled:opacity-40">导出当前 PNG</button>
+          <button onClick={exportAllAsPng} disabled={!hasIcoCapable || isExporting} className="rounded-lg border border-[var(--accent)] bg-[var(--accent)]/10 px-2 py-2 text-xs text-[var(--accent)] disabled:opacity-40">全部导出 PNG</button>
+        </div>
+        <button onClick={extractIcoAsPng} disabled={!hasIcoSources || isExporting} className="w-full rounded-lg border border-[var(--border-hairline)] bg-white/40 px-3 py-2 text-xs text-[var(--text-primary)] disabled:opacity-40">批量提取 ICO 最大帧为 PNG</button>
         <button
           onClick={applyToSelectedLnks}
           disabled={!hasLnks || isExporting}

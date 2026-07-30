@@ -39,6 +39,14 @@ pub struct ExportIcoItemRequest {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ExportPngRequest {
+    pub items: Vec<ExportIcoItemRequest>,
+    #[serde(default)]
+    pub raw_source: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ApplyToLnkRequest {
     pub items: Vec<ApplyToLnkItemRequest>,
     pub export_mode: ExportMode,

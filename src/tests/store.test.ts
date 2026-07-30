@@ -26,11 +26,15 @@ function makeConfig(): ItemConfig {
       ...DEFAULT_RENDER_CONFIG,
       outerShadow: { ...DEFAULT_RENDER_CONFIG.outerShadow },
       stroke: { ...DEFAULT_RENDER_CONFIG.stroke },
+      gloss: { ...DEFAULT_RENDER_CONFIG.gloss },
+      autoCutout: { ...DEFAULT_RENDER_CONFIG.autoCutout },
     },
     upscaleConfig: { ...DEFAULT_UPSCALE_CONFIG },
     brushStrokes: [],
     brushColor: "#FF3B30FF",
     brushSize: 8,
+    brushMode: "paint",
+    brushClipToMask: true,
     activePresetId: "macos-classic-rounded",
   };
 }
@@ -87,6 +91,8 @@ describe("store", () => {
       color: "#FF0000FF",
       size: 8,
       opacity: 1,
+      mode: "paint",
+      clipToMask: true,
     });
 
     useIconForgeStore.getState().applyCurrentConfigToAll();

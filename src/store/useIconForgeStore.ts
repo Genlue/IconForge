@@ -49,9 +49,12 @@ export interface IconForgeState {
   addBrushStroke(stroke: BrushStroke): void;
   undoBrushStroke(): void;
   clearBrushStrokes(): void;
-  updateBrushSettings(patch: { color?: string; size?: number }): void;
+  updateBrushSettings(patch: { color?: string; size?: number; mode?: "paint" | "erase"; clipToMask?: boolean }): void;
   exportAsIco(): Promise<void>;
   exportAllAsIco(): Promise<void>;
+  exportAsPng(): Promise<void>;
+  exportAllAsPng(): Promise<void>;
+  extractIcoAsPng(): Promise<void>;
   applyToSelectedLnks(): Promise<void>;
   setDragActive(active: boolean): void;
   clearError(): void;
@@ -227,6 +230,20 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
           activePresetId: null,
         };
       }
+      if (target === "glossLight" || target === "glossDark") {
+        const key = target === "glossLight" ? "lightColor" : "darkColor";
+        return {
+          ...config,
+          renderConfig: {
+            ...config.renderConfig,
+            gloss: {
+              ...config.renderConfig.gloss,
+              [key]: withAlpha(config.renderConfig.gloss[key]),
+            },
+          },
+          activePresetId: null,
+        };
+      }
       const key = target === "backplate"
         ? "backplateColor"
         : target === "gradientStart"
@@ -271,6 +288,8 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
       ...config,
       brushColor: patch.color ?? config.brushColor,
       brushSize: patch.size ?? config.brushSize,
+      brushMode: patch.mode ?? config.brushMode,
+      brushClipToMask: patch.clipToMask ?? config.brushClipToMask,
     })));
   },
 
@@ -284,6 +303,22 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
   exportAllAsIco: async () => {
     const { items, itemConfigs } = get();
     await exportItemsAsIco(items, itemConfigs, set);
+  },
+
+  exportAsPng: async () => {
+    const { items, itemConfigs, selectedItemId } = get();
+    await exportItemsAsPng(items.filter((item) => selectedPathsFilter(item, items, selectedItemId)), itemConfigs, set, false);
+  },
+
+  exportAllAsPng: async () => {
+    const { items, itemConfigs } = get();
+    await exportItemsAsPng(items, itemConfigs, set, false);
+  },
+
+  extractIcoAsPng: async () => {
+    const { items, itemConfigs } = get();
+    const icoItems = items.filter((item) => item.sourcePath.toLowerCase().endsWith(".ico"));
+    await exportItemsAsPng(icoItems, itemConfigs, set, true);
   },
 
   applyToSelectedLnks: async () => {
@@ -352,6 +387,8 @@ function createDefaultItemConfig(): ItemConfig {
     brushStrokes: [],
     brushColor: "#FF3B30FF",
     brushSize: 8,
+    brushMode: "paint",
+    brushClipToMask: true,
     activePresetId: "macos-classic-rounded",
   };
 }
@@ -361,6 +398,8 @@ function cloneRenderConfig(config: RenderConfig): RenderConfig {
     ...config,
     outerShadow: { ...config.outerShadow },
     stroke: { ...config.stroke },
+    gloss: { ...config.gloss },
+    autoCutout: { ...config.autoCutout },
   };
 }
 
@@ -371,8 +410,30 @@ function cloneItemConfig(config: ItemConfig): ItemConfig {
     brushStrokes: config.brushStrokes.map(cloneBrushStroke),
     brushColor: config.brushColor,
     brushSize: config.brushSize,
+    brushMode: config.brushMode,
+    brushClipToMask: config.brushClipToMask,
     activePresetId: config.activePresetId,
   };
+}
+
+async function exportItemsAsPng(
+  items: InputItem[],
+  itemConfigs: Record<string, ItemConfig>,
+  set: (patch: Partial<IconForgeState>) => void,
+  rawSource: boolean,
+): Promise<void> {
+  const exportItems = items.flatMap((item) => {
+    const config = itemConfigs[item.id];
+    return config ? [{ sourcePath: item.sourcePath, renderConfig: config.renderConfig, upscaleConfig: config.upscaleConfig, brushStrokes: config.brushStrokes }] : [];
+  });
+  if (exportItems.length === 0) return;
+  set({ isExporting: true, error: null, lastExportResult: null });
+  try {
+    const result = await commands.exportPng({ items: exportItems, rawSource });
+    set({ lastExportResult: result.cancelled ? null : result, isExporting: false });
+  } catch (err) {
+    set({ error: normalizeInvokeError(err), isExporting: false });
+  }
 }
 
 function cloneBrushStroke(stroke: BrushStroke): BrushStroke {

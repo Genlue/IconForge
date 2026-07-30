@@ -43,6 +43,24 @@ pub struct StrokeConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GlossConfig {
+    pub enabled: bool,
+    pub width: f32,
+    pub strength: f32,
+    pub light_color: String,
+    pub dark_color: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AutoCutoutConfig {
+    pub enabled: bool,
+    pub tolerance: f32,
+    pub feather: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RenderConfig {
     pub foreground_scale_percent: f32,
     pub foreground_fit: ForegroundFit,
@@ -60,6 +78,8 @@ pub struct RenderConfig {
     pub gradient_angle_degrees: f32,
     pub outer_shadow: OuterShadowConfig,
     pub stroke: StrokeConfig,
+    pub gloss: GlossConfig,
+    pub auto_cutout: AutoCutoutConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -85,4 +105,16 @@ pub struct BrushStroke {
     pub color: String,
     pub size: f32,
     pub opacity: f32,
+    #[serde(default)]
+    pub mode: BrushMode,
+    #[serde(default)]
+    pub clip_to_mask: bool,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum BrushMode {
+    #[default]
+    Paint,
+    Erase,
 }

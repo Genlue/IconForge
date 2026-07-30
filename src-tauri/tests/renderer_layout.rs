@@ -32,6 +32,18 @@ mod tests {
                 width: 0.0,
                 color: "#00000000".into(),
             },
+            gloss: GlossConfig {
+                enabled: false,
+                width: 3.0,
+                strength: 0.7,
+                light_color: "#FFFFFFFF".into(),
+                dark_color: "#00000080".into(),
+            },
+            auto_cutout: AutoCutoutConfig {
+                enabled: false,
+                tolerance: 20.0,
+                feather: 8.0,
+            },
         }
     }
 
@@ -165,6 +177,8 @@ mod tests {
                 color: "#FF0000FF".into(),
                 size: 16.0,
                 opacity: 1.0,
+                mode: BrushMode::Paint,
+                clip_to_mask: false,
             }],
         )
         .unwrap();
@@ -172,5 +186,23 @@ mod tests {
         assert!(painted.get_pixel(128, 128).0[0] > 240);
         assert!(painted.get_pixel(128, 128).0[3] > 240);
         assert_eq!(painted.get_pixel(128, 32).0[3], 0);
+    }
+
+    #[test]
+    fn eraser_removes_alpha_and_clipped_paint_stays_inside() {
+        let source = RgbaImage::from_pixel(256, 256, Rgba([0, 80, 200, 255]));
+        let erased = composite_brush_strokes(
+            source,
+            &[BrushStroke {
+                points: vec![BrushPoint { x: 128.0, y: 128.0 }],
+                color: "#FFFFFFFF".into(),
+                size: 24.0,
+                opacity: 1.0,
+                mode: BrushMode::Erase,
+                clip_to_mask: true,
+            }],
+        )
+        .unwrap();
+        assert_eq!(erased.get_pixel(128, 128).0[3], 0);
     }
 }

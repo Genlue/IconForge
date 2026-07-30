@@ -3,8 +3,8 @@ import { DEFAULT_RENDER_CONFIG } from "../constants/defaults";
 import { BUILT_IN_PRESETS, getPresetById } from "../constants/presets";
 
 describe("presets", () => {
-  it("should have exactly 3 built-in presets", () => {
-    expect(BUILT_IN_PRESETS.length).toBe(3);
+  it("should include the expanded built-in preset collection", () => {
+    expect(BUILT_IN_PRESETS.length).toBeGreaterThanOrEqual(6);
   });
 
   it("should find preset by id", () => {
@@ -29,6 +29,21 @@ describe("presets", () => {
     expect(DEFAULT_RENDER_CONFIG.outerShadow.enabled).toBe(false);
     expect(DEFAULT_RENDER_CONFIG.stroke.width).toBe(0);
   });
+
+  it.each(["macos-gloss-light", "macos-gloss-dark"])(
+    "should use the tuned macOS gloss values for %s",
+    (presetId) => {
+      const preset = getPresetById(presetId);
+      expect(preset?.config.cornerRadius).toBe(57);
+      expect(preset?.config.gloss).toEqual({
+        enabled: true,
+        width: 2,
+        strength: 1,
+        lightColor: "#FFFFFFCC",
+        darkColor: "#BFBFBFCC",
+      });
+    },
+  );
 
   it("should return undefined for unknown id", () => {
     expect(getPresetById("nonexistent")).toBeUndefined();

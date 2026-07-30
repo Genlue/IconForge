@@ -1,7 +1,7 @@
 use tauri::{AppHandle, State};
 
 use crate::domain::request::{
-    ApplyToLnkRequest, ExportIcoRequest, ImportPathsRequest, RenderPreviewRequest,
+    ApplyToLnkRequest, ExportIcoRequest, ExportPngRequest, ImportPathsRequest, RenderPreviewRequest,
 };
 use crate::domain::response::{
     ApplyToLnkResponse, CommandError, ExportIcoResponse, ImportPathsResponse, RenderPreviewResponse,
@@ -37,6 +37,15 @@ pub async fn export_ico(
     state: State<'_, AppState>,
 ) -> Result<ExportIcoResponse, CommandError> {
     export_service::export_ico_batch(&app, request, &state).map_err(into_cmd_err)
+}
+
+#[tauri::command]
+pub async fn export_png(
+    app: AppHandle,
+    request: ExportPngRequest,
+    state: State<'_, AppState>,
+) -> Result<ExportIcoResponse, CommandError> {
+    export_service::export_png_batch(&app, request, &state).map_err(into_cmd_err)
 }
 
 #[tauri::command]

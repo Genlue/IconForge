@@ -158,8 +158,12 @@ fn create_item_from_extracted(
         .resolved_target_path
         .map(|p| p.to_string_lossy().to_string());
     let supported = match file_type {
-        InputFileType::Lnk => vec![ExportMode::ExportAsIco, ExportMode::ApplyToLnk],
-        _ => vec![ExportMode::ExportAsIco],
+        InputFileType::Lnk => vec![
+            ExportMode::ExportAsIco,
+            ExportMode::ExportAsPng,
+            ExportMode::ApplyToLnk,
+        ],
+        _ => vec![ExportMode::ExportAsIco, ExportMode::ExportAsPng],
     };
 
     Ok(InputItem {

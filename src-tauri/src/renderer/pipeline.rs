@@ -35,6 +35,14 @@ pub struct ValidatedRenderConfig {
     pub outer_shadow_color: String,
     pub stroke_width: f32,
     pub stroke_color: String,
+    pub gloss_enabled: bool,
+    pub gloss_width: f32,
+    pub gloss_strength: f32,
+    pub gloss_light_color: String,
+    pub gloss_dark_color: String,
+    pub auto_cutout_enabled: bool,
+    pub auto_cutout_tolerance: f32,
+    pub auto_cutout_feather: f32,
 }
 
 pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, AppError> {
@@ -52,6 +60,8 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
     let _grad_end = parse_hex_rgba(&config.gradient_end_color)?;
     let _shadow_color = parse_hex_rgba(&config.outer_shadow.color)?;
     let _stroke_color = parse_hex_rgba(&config.stroke.color)?;
+    let _gloss_light = parse_hex_rgba(&config.gloss.light_color)?;
+    let _gloss_dark = parse_hex_rgba(&config.gloss.dark_color)?;
 
     if !config.foreground_offset_x.is_finite()
         || !(-128.0..=128.0).contains(&config.foreground_offset_x)
@@ -134,6 +144,30 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
             "stroke width must be in 0..=32".into(),
         ));
     }
+    if !config.gloss.width.is_finite() || !(0.0..=32.0).contains(&config.gloss.width) {
+        return Err(AppError::InvalidArgument(
+            "gloss width must be in 0..=32".into(),
+        ));
+    }
+    if !config.gloss.strength.is_finite() || !(0.0..=1.0).contains(&config.gloss.strength) {
+        return Err(AppError::InvalidArgument(
+            "gloss strength must be in 0..=1".into(),
+        ));
+    }
+    if !config.auto_cutout.tolerance.is_finite()
+        || !(0.0..=100.0).contains(&config.auto_cutout.tolerance)
+    {
+        return Err(AppError::InvalidArgument(
+            "autoCutout tolerance must be in 0..=100".into(),
+        ));
+    }
+    if !config.auto_cutout.feather.is_finite()
+        || !(0.0..=32.0).contains(&config.auto_cutout.feather)
+    {
+        return Err(AppError::InvalidArgument(
+            "autoCutout feather must be in 0..=32".into(),
+        ));
+    }
 
     Ok(ValidatedRenderConfig {
         shape: config.shape,
@@ -158,6 +192,14 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
         outer_shadow_color: config.outer_shadow.color.clone(),
         stroke_width: config.stroke.width,
         stroke_color: config.stroke.color.clone(),
+        gloss_enabled: config.gloss.enabled,
+        gloss_width: config.gloss.width,
+        gloss_strength: config.gloss.strength,
+        gloss_light_color: config.gloss.light_color.clone(),
+        gloss_dark_color: config.gloss.dark_color.clone(),
+        auto_cutout_enabled: config.auto_cutout.enabled,
+        auto_cutout_tolerance: config.auto_cutout.tolerance,
+        auto_cutout_feather: config.auto_cutout.feather,
     })
 }
 
@@ -176,13 +218,28 @@ pub fn render_master(
     }
 
     // Foreground
-    let foreground = render_foreground(source, config, &mask);
+    let cutout_source;
+    let foreground_source = if config.auto_cutout_enabled {
+        cutout_source = super::cutout::remove_border_background(
+            source,
+            config.auto_cutout_tolerance,
+            config.auto_cutout_feather,
+        );
+        &cutout_source
+    } else {
+        source
+    };
+    let foreground = render_foreground(foreground_source, config, &mask);
     over(&mut body, foreground);
 
     // Stroke
     if config.stroke_width > 0.0 {
         let stroke = render_inner_stroke(&mask, config);
         over(&mut body, stroke);
+    }
+
+    if config.gloss_enabled && config.gloss_width > 0.0 && config.gloss_strength > 0.0 {
+        over(&mut body, super::gloss::render_edge_gloss(&mask, config)?);
     }
 
     // Determine silhouette for shadow

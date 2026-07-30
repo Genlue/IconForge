@@ -2,6 +2,7 @@ use image::RgbaImage;
 
 use super::color::linear_channel_to_srgb;
 
+#[derive(Clone)]
 pub struct LinearPremultipliedImage {
     width: u32,
     height: u32,
