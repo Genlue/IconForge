@@ -23,7 +23,7 @@ export function EmptyDropZone(props: EmptyDropZoneProps): JSX.Element {
         <line x1="12" y1="3" x2="12" y2="15" />
       </svg>
       <p className="text-sm font-medium text-[var(--empty-state-text)]">
-        拖入图片、EXE、DLL、LNK 或目录
+        拖入图片、EXE、DLL、LNK
       </p>
     </div>
   );

@@ -10,7 +10,7 @@ export function useKeyboardShortcuts(): void {
         (async () => {
           const selected = await open({
             multiple: true,
-            directory: true,
+            directory: false,
             filters: [{
               name: "支持的文件",
               extensions: ["png","jpg","jpeg","webp","bmp","gif","tif","tiff","ico","exe","dll","lnk"]

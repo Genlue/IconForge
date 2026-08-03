@@ -29,18 +29,6 @@ export function BatchToolbar(props: BatchToolbarProps): JSX.Element {
         >
           + 导入文件
         </button>
-        <button
-          onClick={async () => {
-            const selected = await open({
-              multiple: false,
-              directory: true,
-            });
-            if (selected) await useIconForgeStore.getState().importPaths([selected]);
-          }}
-          className="text-xs text-[var(--accent)] hover:text-[var(--accent)]/80"
-        >
-          + 导入文件夹
-        </button>
       </div>
       {props.itemCount > 0 && (
         <button
