@@ -28,7 +28,12 @@ export function PresetSelector(props: PresetSelectorProps): JSX.Element {
 
   useEffect(() => {
     if (!menu) return;
-    const close = () => setMenu(null);
+    // Left-click anywhere (or Escape) closes the menu; right clicks must not
+    // close it, otherwise the menu closes itself before it can be used.
+    const close = (e: PointerEvent | MouseEvent) => {
+      if (e.type === "pointerdown" && e.button !== 0) return;
+      setMenu(null);
+    };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setMenu(null);
     };

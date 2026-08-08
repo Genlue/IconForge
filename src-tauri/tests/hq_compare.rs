@@ -122,10 +122,12 @@ mod tests {
             max_diff[0].max(max_diff[1]).max(max_diff[2])
         );
         // Tolerance absorbs filter differences (PIL Lanczos vs image crate,
-        // BOX/BILINEAR sampling). Anything beyond that signals an algorithmic
-        // regression against the reference implementation.
-        assert!(
-            mean[0] < 12.0 && mean[1] < 12.0 && mean[2] < 12.0 && mean[3] < 6.0,
+// BOX/BILINEAR sampling) plus one intentional deviation from the reference:
+// the halo tints relative to the *panel base* instead of the dominant color,
+// so user-defined base colors keep a visible radial tint. Anything beyond
+// that signals an algorithmic regression against the reference.
+assert!(
+            mean[0] < 30.0 && mean[1] < 30.0 && mean[2] < 30.0 && mean[3] < 6.0,
             "mean diff too large: {mean:?}"
         );
     }

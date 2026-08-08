@@ -180,9 +180,13 @@ pub fn render_hq(
                 (1.0 - s).max(0.0).sqrt()
             };
             let k = cfg.bg;
-            let r_ = (panel[0] + (ray_c[0] - dom[0]) * k * rf) * vg;
-            let g_ = (panel[1] + (ray_c[1] - dom[1]) * k * rf) * vg;
-            let b_ = (panel[2] + (ray_c[2] - dom[2]) * k * rf) * vg;
+            // The halo tints the panel toward the icon ray color. Using the
+            // panel base (instead of the dominant color) as reference keeps
+            // the tint visible even with user-defined base colors: on a
+            // white/black base the icon hue shows through strongly.
+            let r_ = (panel[0] + (ray_c[0] - panel[0]) * k * rf) * vg;
+            let g_ = (panel[1] + (ray_c[1] - panel[1]) * k * rf) * vg;
+            let b_ = (panel[2] + (ray_c[2] - panel[2]) * k * rf) * vg;
             canvas[y * size + x] = [
                 clamp_rgb(r_),
                 clamp_rgb(g_),

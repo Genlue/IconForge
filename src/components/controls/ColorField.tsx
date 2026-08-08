@@ -9,6 +9,8 @@ export interface ColorFieldProps {
   value: string;
   disabled?: boolean;
   pickTarget?: ColorPickTarget;
+  /** Hide the opacity slider (client still stores an #RRGGBBAA value). */
+  showAlpha?: boolean;
   onChange(value: string): void;
 }
 
@@ -64,18 +66,26 @@ export function ColorField(props: ColorFieldProps): JSX.Element {
             取色
           </button>
         )}
-        <input
-          type="range"
-          min={0}
-          max={255}
-          value={a}
-          disabled={props.disabled}
-          onChange={handleAlphaChange}
-          className="flex-1"
-        />
-        <span className="w-10 text-right text-xs text-[var(--text-secondary)]">
-          {Math.round((a / 255) * 100)}%
-        </span>
+        {props.showAlpha === false ? (
+          <span className="flex-1 text-right text-[11px] text-[var(--text-secondary)]">
+            不透明度 100%
+          </span>
+        ) : (
+          <>
+            <input
+              type="range"
+              min={0}
+              max={255}
+              value={a}
+              disabled={props.disabled}
+              onChange={handleAlphaChange}
+              className="flex-1"
+            />
+            <span className="w-10 text-right text-xs text-[var(--text-secondary)]">
+              {Math.round((a / 255) * 100)}%
+            </span>
+          </>
+        )}
       </div>
     </div>
   );

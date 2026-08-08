@@ -144,7 +144,10 @@ export function HqRenderSection(props: HqRenderSectionProps): JSX.Element {
                 id="hq-custom-bg"
                 label="基底颜色"
                 value={value.customBgColor}
-                onChange={(customBgColor) => onChange({ customBgColor })}
+                showAlpha={false}
+                onChange={(customBgColor) =>
+                  onChange({ customBgColor: `${customBgColor.slice(0, 7)}FF` })
+                }
               />
               <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
                 固定使用该颜色作为面板基底（代替从图标主色自动推导的深浅色），径向光晕仍按图标配色。
