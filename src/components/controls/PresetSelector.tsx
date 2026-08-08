@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { PresetDefinition } from "../../types/domain";
 
 export interface PresetSelectorProps {
@@ -28,26 +29,25 @@ export function PresetSelector(props: PresetSelectorProps): JSX.Element {
 
   useEffect(() => {
     if (!menu) return;
-    // Left-click anywhere (or Escape) closes the menu; right clicks must not
-    // close it, otherwise the menu closes itself before it can be used.
-    const close = (e: PointerEvent | MouseEvent) => {
-      if (e.type === "pointerdown" && e.button !== 0) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      if (e.defaultPrevented) return;
+      if (menuRef.current && menuRef.current.contains(e.target as Node)) return;
       setMenu(null);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setMenu(null);
     };
-    window.addEventListener("pointerdown", close, true);
+    window.addEventListener("pointerdown", onPointerDown, true);
     window.addEventListener("keydown", onKey);
     return () => {
-      window.removeEventListener("pointerdown", close, true);
+      window.removeEventListener("pointerdown", onPointerDown, true);
       window.removeEventListener("keydown", onKey);
     };
   }, [menu]);
 
   const openMenu = (event: React.MouseEvent, preset: PresetDefinition) => {
     event.preventDefault();
-    event.stopPropagation();
     setMenu({ preset, x: event.clientX, y: event.clientY });
   };
 
@@ -113,32 +113,36 @@ export function PresetSelector(props: PresetSelectorProps): JSX.Element {
         )}
       </div>
 
-      {menu && (
-        <div
-          ref={menuRef}
-          className="fixed z-50 min-w-[9rem] overflow-hidden rounded-lg border border-[var(--border-hairline)] bg-white shadow-xl"
-          style={{ left: menu.x, top: menu.y }}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            onClick={() => startRename(menu.preset)}
-            className="block w-full px-3 py-2 text-left text-xs text-[var(--text-primary)] hover:bg-violet-50"
+      {menu &&
+        createPortal(
+          <div
+            ref={menuRef}
+            role="menu"
+            className="fixed z-[100] min-w-[9rem] overflow-hidden rounded-lg border border-[var(--border-hairline)] bg-white shadow-xl"
+            style={{ left: menu.x, top: menu.y }}
           >
-            重命名…
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              props.onDelete?.(menu.preset.id);
-              setMenu(null);
-            }}
-            className="block w-full px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50"
-          >
-            删除
-          </button>
-        </div>
-      )}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => startRename(menu.preset)}
+              className="block w-full px-3 py-2 text-left text-xs text-[var(--text-primary)] hover:bg-violet-50"
+            >
+              重命名…
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                props.onDelete?.(menu.preset.id);
+                setMenu(null);
+              }}
+              className="block w-full px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50"
+            >
+              删除
+            </button>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
