@@ -6,6 +6,8 @@ import { EmptyDropZone } from "./EmptyDropZone";
 import { Spinner } from "../common/Spinner";
 import { useDebouncedPreview } from "../../hooks/useDebouncedPreview";
 import { DEFAULT_RENDER_CONFIG, DEFAULT_UPSCALE_CONFIG } from "../../constants/defaults";
+import { drawSelectionOverlay } from "../../lib/selectionOverlay";
+import { SourceEditor } from "./SourceEditor";
 
 export function PreviewPane(): JSX.Element {
   const items = useIconForgeStore((s) => s.items);
@@ -15,10 +17,14 @@ export function PreviewPane(): JSX.Element {
   );
   const previewTool = useIconForgeStore((s) => s.previewTool);
   const addBrushStroke = useIconForgeStore((s) => s.addBrushStroke);
-  const addWandStroke = useIconForgeStore((s) => s.addWandStroke);
   const applyPickedColor = useIconForgeStore((s) => s.applyPickedColor);
+  const wandSelection = useIconForgeStore((s) => s.wandSelection);
+  const deleteWandSelection = useIconForgeStore((s) => s.deleteWandSelection);
   const dragActive = useIconForgeStore((s) => s.dragActive);
+  const sourceEditorOpen = useIconForgeStore((s) => s.sourceEditorOpen);
+  const setSourceEditorOpen = useIconForgeStore((s) => s.setSourceEditorOpen);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const [drawingPoints, setDrawingPoints] = useState<BrushPoint[]>([]);
 
@@ -27,12 +33,14 @@ export function PreviewPane(): JSX.Element {
   const upscaleConfig = itemConfig?.upscaleConfig ?? DEFAULT_UPSCALE_CONFIG;
   const brushStrokes = itemConfig?.brushStrokes ?? [];
   const wandStrokes = itemConfig?.wandStrokes ?? [];
+  const eraserStrokes = itemConfig?.eraserStrokes ?? [];
   const preview = useDebouncedPreview(
     selectedItem?.sourcePath ?? null,
     renderConfig,
     upscaleConfig,
     brushStrokes,
     wandStrokes,
+    eraserStrokes,
     420,
   );
 
@@ -48,6 +56,29 @@ export function PreviewPane(): JSX.Element {
     };
     image.src = preview.pngDataUrl;
   }, [preview.pngDataUrl]);
+
+  // Marching-ants overlay for a pending wand selection (only meaningful while
+  // the source editor is open; keep it when closing so the user can review).
+  useEffect(() => {
+    if (!wandSelection) {
+      drawSelectionOverlay(overlayRef.current, null, 0);
+      return;
+    }
+    const image = new Image();
+    let phase = 0;
+    let timer: number | undefined;
+    image.onload = () => {
+      timer = window.setInterval(() => {
+        phase = (phase + 4) % 16;
+        drawSelectionOverlay(overlayRef.current, image, phase);
+      }, 90);
+      drawSelectionOverlay(overlayRef.current, image, phase);
+    };
+    image.src = `data:image/png;base64,${wandSelection.maskPngBase64}`;
+    return () => {
+      if (timer !== undefined) window.clearInterval(timer);
+    };
+  }, [wandSelection]);
 
   const pointFromEvent = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -71,11 +102,13 @@ export function PreviewPane(): JSX.Element {
       return;
     }
     if (previewTool === "magic-wand") {
-      if (!itemConfig) return;
-      addWandStroke({
-        points: [point],
-        tolerance: itemConfig.wandTolerance,
-      });
+      // Wand editing happens in the source editor where coordinates match the
+      // original image; selecting here would drift.
+      setSourceEditorOpen(true);
+      return;
+    }
+    if (previewTool === "source-eraser") {
+      setSourceEditorOpen(true);
       return;
     }
     if (previewTool !== "brush" && previewTool !== "eraser") return;
@@ -89,10 +122,12 @@ export function PreviewPane(): JSX.Element {
       mode: previewTool === "eraser" ? "erase" : "paint",
       clipToMask: itemConfig.brushClipToMask,
     });
-  }, [applyPickedColor, itemConfig, pointFromEvent, previewTool]);
+  }, [applyPickedColor, itemConfig, pointFromEvent, previewTool, setSourceEditorOpen]);
 
   const handlePointerMove = useCallback((event: React.PointerEvent<HTMLCanvasElement>) => {
-    if ((previewTool !== "brush" && previewTool !== "eraser") || drawingPoints.length === 0 || !imageRef.current || !itemConfig) return;
+    if ((previewTool !== "brush" && previewTool !== "eraser") || drawingPoints.length === 0 || !imageRef.current || !itemConfig) {
+      return;
+    }
     const points = [...drawingPoints, pointFromEvent(event)];
     setDrawingPoints(points);
     redrawCanvas(event.currentTarget, imageRef.current, {
@@ -127,9 +162,9 @@ export function PreviewPane(): JSX.Element {
       ? "crosshair"
       : previewTool === "eraser"
         ? "cell"
-        : previewTool === "magic-wand"
+        : previewTool === "magic-wand" || previewTool === "source-eraser"
           ? "crosshair"
-      : "default";
+          : "default";
 
   return (
     <div className="relative flex h-full flex-col items-center justify-center gap-3 p-8">
@@ -153,6 +188,14 @@ export function PreviewPane(): JSX.Element {
               onPointerUp={finishStroke}
               onPointerCancel={() => setDrawingPoints([])}
             />
+            {(previewTool === "magic-wand") && (
+              <canvas
+                ref={overlayRef}
+                width={420}
+                height={420}
+                className="pointer-events-none absolute inset-0 z-20 h-full w-full"
+              />
+            )}
             {preview.loading && (
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/55 backdrop-blur-sm">
                 <Spinner label={upscaleConfig.enabled ? "Real-CUGAN 处理中..." : "正在渲染..."} />
@@ -178,9 +221,30 @@ export function PreviewPane(): JSX.Element {
           {previewTool === "eyedropper" && <span className="text-[var(--accent)]">点击预览取色</span>}
           {previewTool === "brush" && <span className="text-[var(--accent)]">在预览上拖动绘制</span>}
           {previewTool === "eraser" && <span className="text-[var(--accent)]">在预览上拖动擦除</span>}
-          {previewTool === "magic-wand" && <span className="text-[var(--accent)]">点击删除相似颜色区域</span>}
+          {(previewTool === "magic-wand" || previewTool === "source-eraser") && (
+            <span className="text-[var(--accent)]">原图修改请在原图编辑界面中进行</span>
+          )}
+          <button
+            type="button"
+            onClick={() => setSourceEditorOpen(true)}
+            className="rounded-lg border border-[var(--accent)] bg-[var(--accent)]/10 px-3 py-1 text-xs text-[var(--accent)] hover:bg-[var(--accent)]/15"
+          >
+            {wandStrokes.length + eraserStrokes.length > 0
+              ? `编辑原图（${wandStrokes.length + eraserStrokes.length} 处修改）`
+              : "编辑原图"}
+          </button>
+          {wandSelection && previewTool === "magic-wand" && (
+            <button
+              type="button"
+              onClick={deleteWandSelection}
+              className="rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100"
+            >
+              删除选中区域 (Del)
+            </button>
+          )}
         </div>
       )}
+      {sourceEditorOpen && <SourceEditor />}
     </div>
   );
 }

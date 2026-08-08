@@ -11,7 +11,6 @@ export function ShadowSection(props: ShadowSectionProps): JSX.Element {
   const { value, onChange } = props;
   return (
     <section className="space-y-3">
-      <h3 className="text-xs font-semibold text-[var(--text-primary)]">外阴影</h3>
       <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
         <input
           type="checkbox"

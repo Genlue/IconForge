@@ -38,6 +38,9 @@ function makeConfig(): ItemConfig {
     brushClipToMask: true,
     wandStrokes: [],
     wandTolerance: 72,
+    eraserStrokes: [],
+    eraserSize: 16,
+    eraserHardness: 50,
     activePresetId: "macos-classic-rounded",
   };
 }
@@ -199,5 +202,92 @@ describe("store", () => {
     useIconForgeStore.getState().clearWandStrokes();
     state = useIconForgeStore.getState();
     expect(state.itemConfigs.first?.wandStrokes).toHaveLength(0);
+  });
+
+  it("delete key flow: selection converts into a wand stroke", () => {
+    const item = makeItem("first");
+    useIconForgeStore.setState({
+      items: [item],
+      selectedItemId: item.id,
+      previewTool: "magic-wand",
+      itemConfigs: { first: makeConfig() },
+    });
+
+    useIconForgeStore.getState().setWandSelection({
+      x: 40,
+      y: 60,
+      tolerance: 30,
+      maskPngBase64: "mask",
+    });
+    useIconForgeStore.getState().deleteWandSelection();
+
+    const state = useIconForgeStore.getState();
+    expect(state.wandSelection).toBeNull();
+    expect(state.itemConfigs.first?.wandStrokes).toEqual([
+      { points: [{ x: 40, y: 60 }], tolerance: 30 },
+    ]);
+  });
+
+  it("tracks source-eraser strokes with undo and clear", () => {
+    const item = makeItem("first");
+    useIconForgeStore.setState({
+      items: [item],
+      selectedItemId: item.id,
+      itemConfigs: { first: makeConfig() },
+    });
+
+    useIconForgeStore.getState().addEraserStroke({
+      points: [{ x: 10, y: 20 }, { x: 50, y: 50 }],
+      size: 20,
+      hardness: 70,
+    });
+    useIconForgeStore.getState().updateEraserSettings({ size: 8, hardness: 30 });
+
+    let state = useIconForgeStore.getState();
+    expect(state.itemConfigs.first?.eraserStrokes).toHaveLength(1);
+    expect(state.itemConfigs.first?.eraserStrokes[0]?.size).toBe(20);
+    expect(state.itemConfigs.first?.eraserSize).toBe(8);
+    expect(state.itemConfigs.first?.eraserHardness).toBe(30);
+
+    useIconForgeStore.getState().undoEraserStroke();
+    useIconForgeStore.getState().clearEraserStrokes();
+    state = useIconForgeStore.getState();
+    expect(state.itemConfigs.first?.eraserStrokes).toHaveLength(0);
+  });
+
+  it("saves, renames and deletes custom presets without the source-processing bits", () => {
+    const item = makeItem("first");
+    useIconForgeStore.setState({
+      items: [item],
+      selectedItemId: item.id,
+      itemConfigs: { first: makeConfig() },
+    });
+
+    useIconForgeStore
+      .getState()
+      .updateRenderConfig({ autoCutout: { enabled: true, tolerance: 55, feather: 6 }, canvasInset: 42 });
+    const presetId = useIconForgeStore.getState().saveCurrentAsPreset();
+    expect(presetId).toBeTruthy();
+
+    let state = useIconForgeStore.getState();
+    const saved = state.customPresets[0];
+    expect(saved?.name).toMatch(/^自定义预设 /);
+    expect(saved?.config.canvasInset).toBe(42);
+    // Auto cutout (原图处理) is excluded from saved presets.
+    expect(saved?.config.autoCutout.enabled).toBe(false);
+    expect(state.itemConfigs.first?.activePresetId).toBe(presetId);
+
+    useIconForgeStore.getState().renamePreset(presetId!, "我的风格");
+    state = useIconForgeStore.getState();
+    expect(state.customPresets[0]?.name).toBe("我的风格");
+
+    // Custom preset can be applied.
+    useIconForgeStore.getState().applyPreset(presetId!);
+    expect(useIconForgeStore.getState().itemConfigs.first?.renderConfig.canvasInset).toBe(42);
+
+    useIconForgeStore.getState().deletePreset(presetId!);
+    state = useIconForgeStore.getState();
+    expect(state.customPresets).toHaveLength(0);
+    expect(state.itemConfigs.first?.activePresetId).toBeNull();
   });
 });

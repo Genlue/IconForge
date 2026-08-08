@@ -18,7 +18,6 @@ export function ShapeSection(props: ShapeSectionProps): JSX.Element {
   const { config, onChange } = props;
   return (
     <section className="space-y-3">
-      <h3 className="text-xs font-semibold text-[var(--text-primary)]">形状</h3>
       <SegmentedControl
         id="shape"
         value={config.shape}

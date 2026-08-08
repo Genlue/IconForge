@@ -30,6 +30,7 @@ pub struct ValidatedHqRenderConfig {
     pub edge_gloss_strength: f32,
     pub edge_gloss_light: [f32; 4],
     pub edge_gloss_dark: [f32; 4],
+    pub edge_gloss_feather_blur: f32,
 }
 
 pub fn validate_hq(config: &RenderConfig) -> Result<ValidatedHqRenderConfig, AppError> {
@@ -68,6 +69,7 @@ pub fn validate_hq(config: &RenderConfig) -> Result<ValidatedHqRenderConfig, App
         edge_gloss_strength: check(config.gloss.strength, 0.0, 1.0, "gloss strength")?,
         edge_gloss_light: super::color::parse_hex_srgb_rgba(&config.gloss.light_color)?,
         edge_gloss_dark: super::color::parse_hex_srgb_rgba(&config.gloss.dark_color)?,
+        edge_gloss_feather_blur: check(config.gloss.feather_blur, 0.0, 32.0, "gloss featherBlur")?,
     })
 }
 
@@ -566,7 +568,12 @@ fn render_edge_gloss(mask: &[f32], size: usize, cfg: &ValidatedHqRenderConfig) -
     if !cfg.edge_gloss_enabled || cfg.edge_gloss_width <= 0.0 || cfg.edge_gloss_strength <= 0.0 {
         return out;
     }
-    let inset = erode_mask(mask, size, cfg.edge_gloss_width.ceil() as usize);
+    let base_inset = erode_mask(mask, size, cfg.edge_gloss_width.ceil() as usize);
+    let inset = if cfg.edge_gloss_feather_blur > 0.0 {
+        gaussian_blur(&base_inset, size, size, cfg.edge_gloss_feather_blur)
+    } else {
+        base_inset
+    };
     for y in 0..size {
         for x in 0..size {
             let idx = y * size + x;
@@ -758,6 +765,7 @@ mod tests {
             edge_gloss_strength: 0.6,
             edge_gloss_light: [1.0, 1.0, 1.0, 0.7],
             edge_gloss_dark: [0.0, 0.0, 0.0, 0.5],
+            edge_gloss_feather_blur: 0.0,
         }
     }
 

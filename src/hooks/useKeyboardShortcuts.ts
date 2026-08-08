@@ -23,9 +23,14 @@ export function useKeyboardShortcuts(): void {
         return;
       }
 
-      // Placeholder: handle keyboard shortcuts in later stages
+      // Delete / Backspace removes the pending magic wand selection when the
+      // wand tool is active.
       if (e.key === "Delete" || e.key === "Backspace") {
-        // removeItem will be handled here later
+        const state = useIconForgeStore.getState();
+        if (state.previewTool === "magic-wand" && state.wandSelection) {
+          e.preventDefault();
+          state.deleteWandSelection();
+        }
       }
     };
     window.addEventListener("keydown", handler);

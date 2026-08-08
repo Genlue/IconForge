@@ -2,9 +2,11 @@ use tauri::{AppHandle, State};
 
 use crate::domain::request::{
     ApplyToLnkRequest, ExportIcoRequest, ExportPngRequest, ImportPathsRequest, RenderPreviewRequest,
+    SourceImageRequest, WandSelectionRequest,
 };
 use crate::domain::response::{
     ApplyToLnkResponse, CommandError, ExportIcoResponse, ImportPathsResponse, RenderPreviewResponse,
+    SourceImageResponse, WandSelectionResponse,
 };
 use crate::services::{export_service, import_service, render_service};
 use crate::state::AppState;
@@ -28,6 +30,24 @@ pub async fn render_preview(
     state: State<'_, AppState>,
 ) -> Result<RenderPreviewResponse, CommandError> {
     render_service::render_preview(&app, request, &state).map_err(into_cmd_err)
+}
+
+#[tauri::command]
+pub async fn compute_wand_selection(
+    app: AppHandle,
+    request: WandSelectionRequest,
+    state: State<'_, AppState>,
+) -> Result<WandSelectionResponse, CommandError> {
+    render_service::compute_wand_selection(&app, request, &state).map_err(into_cmd_err)
+}
+
+#[tauri::command]
+pub async fn render_source_image(
+    app: AppHandle,
+    request: SourceImageRequest,
+    state: State<'_, AppState>,
+) -> Result<SourceImageResponse, CommandError> {
+    render_service::render_source_image(&app, request, &state).map_err(into_cmd_err)
 }
 
 #[tauri::command]

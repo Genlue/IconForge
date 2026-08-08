@@ -12,7 +12,6 @@ export function ForegroundSection(props: ForegroundSectionProps): JSX.Element {
   const { config, onChange } = props;
   return (
     <section className="space-y-3">
-      <h3 className="text-xs font-semibold text-[var(--text-primary)]">前景</h3>
       <SegmentedControl
         id="foreground-fit"
         value={config.foregroundFit}

@@ -1,4 +1,4 @@
-import type { BrushStroke, InputItem, RenderConfig, UpscaleConfig, WandStroke, ExportMode } from "./domain";
+import type { BrushStroke, InputItem, RenderConfig, UpscaleConfig, WandStroke, EraserStroke, ExportMode } from "./domain";
 
 export interface ImportPathsRequest {
   paths: string[];
@@ -22,7 +22,34 @@ export interface RenderPreviewRequest {
   upscaleConfig: UpscaleConfig;
   brushStrokes: BrushStroke[];
   wandStrokes: WandStroke[];
+  eraserStrokes: EraserStroke[];
   previewSize: number;
+}
+
+export interface WandSelectionRequest {
+  sourcePath: string;
+  upscaleConfig: UpscaleConfig;
+  point: { x: number; y: number };
+  tolerance: number;
+  wandStrokes: WandStroke[];
+  eraserStrokes: EraserStroke[];
+}
+
+export interface WandSelectionResponse {
+  maskPngBase64: string;
+}
+
+export interface SourceImageRequest {
+  sourcePath: string;
+  upscaleConfig: UpscaleConfig;
+  wandStrokes: WandStroke[];
+  eraserStrokes: EraserStroke[];
+}
+
+export interface SourceImageResponse {
+  pngBase64: string;
+  width: number;
+  height: number;
 }
 
 export interface RenderPreviewResponse {
@@ -39,6 +66,7 @@ export interface ExportIcoItemRequest {
   upscaleConfig: UpscaleConfig;
   brushStrokes: BrushStroke[];
   wandStrokes: WandStroke[];
+  eraserStrokes: EraserStroke[];
 }
 
 export interface ExportIcoRequest {
@@ -68,6 +96,7 @@ export interface ApplyToLnkItemRequest {
   upscaleConfig: UpscaleConfig;
   brushStrokes: BrushStroke[];
   wandStrokes: WandStroke[];
+  eraserStrokes: EraserStroke[];
 }
 
 export interface ApplyToLnkRequest {

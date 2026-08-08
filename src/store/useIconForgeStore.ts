@@ -11,6 +11,9 @@ import type {
   UpscaleConfig,
   HqRenderConfig,
   WandStroke,
+  WandSelection,
+  EraserStroke,
+  PresetDefinition,
 } from "../types/domain";
 import { ExportMode } from "../types/domain";
 import type {
@@ -23,17 +26,43 @@ import { getPresetById } from "../constants/presets";
 import { commands } from "../lib/tauri";
 import { normalizeInvokeError } from "../types/errors";
 
+const CUSTOM_PRESETS_KEY = "iconforge.customPresets.v1";
+
+function loadCustomPresets(): PresetDefinition[] {
+  try {
+    if (typeof window === "undefined") return [];
+    const raw = window.localStorage.getItem(CUSTOM_PRESETS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistCustomPresets(presets: PresetDefinition[]): void {
+  try {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(presets));
+  } catch {
+    // storage unavailable: presets stay in memory for the session
+  }
+}
+
 export interface IconForgeState {
   items: InputItem[];
   selectedItemId: string | null;
   itemConfigs: Record<string, ItemConfig>;
   previewTool: PreviewTool;
   colorPickTarget: ColorPickTarget | null;
+  wandSelection: WandSelection | null;
+  sourceEditorOpen: boolean;
   isImporting: boolean;
   isExporting: boolean;
   dragActive: boolean;
   error: CommandError | null;
   lastExportResult: ExportIcoResponse | ApplyToLnkResponse | null;
+  customPresets: PresetDefinition[];
 
   importPaths(paths: string[]): Promise<void>;
   removeItem(id: string): void;
@@ -54,9 +83,16 @@ export interface IconForgeState {
   clearBrushStrokes(): void;
   updateBrushSettings(patch: { color?: string; size?: number; mode?: "paint" | "erase"; clipToMask?: boolean }): void;
   setWandTolerance(tolerance: number): void;
+  setWandSelection(selection: WandSelection | null): void;
+  clearWandSelection(): void;
+  deleteWandSelection(): void;
   addWandStroke(stroke: WandStroke): void;
   undoWandStroke(): void;
   clearWandStrokes(): void;
+  updateEraserSettings(patch: { size?: number; hardness?: number }): void;
+  addEraserStroke(stroke: EraserStroke): void;
+  undoEraserStroke(): void;
+  clearEraserStrokes(): void;
   exportAsIco(): Promise<void>;
   exportAllAsIco(): Promise<void>;
   exportAsPng(): Promise<void>;
@@ -64,7 +100,11 @@ export interface IconForgeState {
   extractIcoAsPng(): Promise<void>;
   applyToSelectedLnks(): Promise<void>;
   setDragActive(active: boolean): void;
+  setSourceEditorOpen(open: boolean): void;
   clearError(): void;
+  saveCurrentAsPreset(): string | null;
+  renamePreset(id: string, name: string): void;
+  deletePreset(id: string): void;
 }
 
 export const useIconForgeStore = create<IconForgeState>((set, get) => ({
@@ -73,11 +113,14 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
   itemConfigs: {},
   previewTool: "none",
   colorPickTarget: null,
+  wandSelection: null,
+  sourceEditorOpen: false,
   isImporting: false,
   isExporting: false,
   dragActive: false,
   error: null,
   lastExportResult: null,
+  customPresets: loadCustomPresets(),
 
   importPaths: async (paths: string[]) => {
     set({ isImporting: true, error: null });
@@ -185,7 +228,8 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
   },
 
   applyPreset: (presetId: string) => {
-    const preset = getPresetById(presetId);
+    const preset =
+      getPresetById(presetId) ?? get().customPresets.find((p) => p.id === presetId);
     if (!preset) return;
     set((state) => updateSelectedConfig(state, (config) => ({
       ...config,
@@ -339,6 +383,55 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
     })));
   },
 
+  setWandSelection: (selection: WandSelection | null) => set({ wandSelection: selection }),
+
+  clearWandSelection: () => set({ wandSelection: null }),
+
+  deleteWandSelection: () => {
+    const { wandSelection, previewTool } = get();
+    if (!wandSelection || previewTool !== "magic-wand") return;
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
+      wandStrokes: [
+        ...config.wandStrokes,
+        {
+          points: [{ x: wandSelection.x, y: wandSelection.y }],
+          tolerance: wandSelection.tolerance,
+        },
+      ],
+    })));
+    set({ wandSelection: null });
+  },
+
+  updateEraserSettings: (patch) => {
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
+      eraserSize: patch.size ?? config.eraserSize,
+      eraserHardness: patch.hardness ?? config.eraserHardness,
+    })));
+  },
+
+  addEraserStroke: (stroke) => {
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
+      eraserStrokes: [...config.eraserStrokes, cloneEraserStroke(stroke)],
+    })));
+  },
+
+  undoEraserStroke: () => {
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
+      eraserStrokes: config.eraserStrokes.slice(0, -1),
+    })));
+  },
+
+  clearEraserStrokes: () => {
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
+      eraserStrokes: [],
+    })));
+  },
+
   exportAsIco: async () => {
     const { items, itemConfigs, selectedItemId } = get();
     const selectedItems = items
@@ -379,6 +472,7 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
           upscaleConfig: config.upscaleConfig,
           brushStrokes: config.brushStrokes,
           wandStrokes: config.wandStrokes,
+          eraserStrokes: config.eraserStrokes,
         }] : [];
       });
     set({ isExporting: true, error: null, lastExportResult: null });
@@ -395,7 +489,81 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
 
   setDragActive: (active: boolean) => set({ dragActive: active }),
 
+  setSourceEditorOpen: (sourceEditorOpen) => set({ sourceEditorOpen }),
+
   clearError: () => set({ error: null }),
+
+  saveCurrentAsPreset: () => {
+    const { selectedItemId, itemConfigs, customPresets } = get();
+    const config = selectedItemId ? itemConfigs[selectedItemId] : undefined;
+    if (!config) return null;
+    const presetId = `custom-${Date.now().toString(36)}`;
+    const base = cloneRenderConfig(config.renderConfig);
+    // The source-processing category (auto cutout) is deliberately not part
+    // of a saved preset; upscale and brush settings are per-icon anyway.
+    base.autoCutout = {
+      enabled: false,
+      tolerance: 20,
+      feather: 8,
+    };
+    const nextNumber = customPresets.reduce((max, p) => {
+      const m = /^自定义预设 (\d+)$/.exec(p.name);
+      return m ? Math.max(max, Number(m[1])) : max;
+    }, 0) + 1;
+    const preset: PresetDefinition = {
+      id: presetId,
+      name: `自定义预设 ${nextNumber}`,
+      description: "保存的自定义设置",
+      config: base,
+      custom: true,
+    };
+    const next = [...customPresets, preset];
+    persistCustomPresets(next);
+    set((state) => {
+      if (!state.selectedItemId) return { customPresets: next };
+      const current = state.itemConfigs[state.selectedItemId];
+      if (!current) return { customPresets: next };
+      return {
+        customPresets: next,
+        itemConfigs: {
+          ...state.itemConfigs,
+          [state.selectedItemId]: { ...current, activePresetId: presetId },
+        },
+      };
+    });
+    return presetId;
+  },
+
+  renamePreset: (id, name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    set((state) => {
+      const next = state.customPresets.map((p) =>
+        p.id === id ? { ...p, name: trimmed } : p,
+      );
+      persistCustomPresets(next);
+      return { customPresets: next };
+    });
+  },
+
+  deletePreset: (id) => {
+    set((state) => {
+      const next = state.customPresets.filter((p) => p.id !== id);
+      persistCustomPresets(next);
+      const patch: Partial<IconForgeState> = { customPresets: next };
+      // Clear the active preset marker when the deleted preset was in use.
+      if (state.selectedItemId && state.itemConfigs[state.selectedItemId]?.activePresetId === id) {
+        const current = state.itemConfigs[state.selectedItemId];
+        if (current) {
+          patch.itemConfigs = {
+            ...state.itemConfigs,
+            [state.selectedItemId]: { ...current, activePresetId: null },
+          };
+        }
+      }
+      return patch;
+    });
+  },
 }));
 
 async function exportItemsAsIco(
@@ -411,6 +579,7 @@ async function exportItemsAsIco(
       upscaleConfig: config.upscaleConfig,
       brushStrokes: config.brushStrokes,
       wandStrokes: config.wandStrokes,
+      eraserStrokes: config.eraserStrokes,
     }] : [];
   });
   set({ isExporting: true, error: null, lastExportResult: null });
@@ -439,6 +608,9 @@ function createDefaultItemConfig(): ItemConfig {
     brushClipToMask: true,
     wandStrokes: [],
     wandTolerance: 72,
+    eraserStrokes: [],
+    eraserSize: 16,
+    eraserHardness: 50,
     activePresetId: "macos-classic-rounded",
   };
 }
@@ -465,6 +637,9 @@ function cloneItemConfig(config: ItemConfig): ItemConfig {
     brushClipToMask: config.brushClipToMask,
     wandStrokes: config.wandStrokes.map(cloneWandStroke),
     wandTolerance: config.wandTolerance,
+    eraserStrokes: config.eraserStrokes.map(cloneEraserStroke),
+    eraserSize: config.eraserSize,
+    eraserHardness: config.eraserHardness,
     activePresetId: config.activePresetId,
   };
 }
@@ -477,7 +652,7 @@ async function exportItemsAsPng(
 ): Promise<void> {
   const exportItems = items.flatMap((item) => {
     const config = itemConfigs[item.id];
-    return config ? [{ sourcePath: item.sourcePath, renderConfig: config.renderConfig, upscaleConfig: config.upscaleConfig, brushStrokes: config.brushStrokes, wandStrokes: config.wandStrokes }] : [];
+    return config ? [{ sourcePath: item.sourcePath, renderConfig: config.renderConfig, upscaleConfig: config.upscaleConfig, brushStrokes: config.brushStrokes, wandStrokes: config.wandStrokes, eraserStrokes: config.eraserStrokes }] : [];
   });
   if (exportItems.length === 0) return;
   set({ isExporting: true, error: null, lastExportResult: null });
@@ -490,6 +665,13 @@ async function exportItemsAsPng(
 }
 
 function cloneBrushStroke(stroke: BrushStroke): BrushStroke {
+  return {
+    ...stroke,
+    points: stroke.points.map((point) => ({ ...point })),
+  };
+}
+
+function cloneEraserStroke(stroke: EraserStroke): EraserStroke {
   return {
     ...stroke,
     points: stroke.points.map((point) => ({ ...point })),

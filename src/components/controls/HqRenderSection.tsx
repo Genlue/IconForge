@@ -1,4 +1,3 @@
-import { useState } from "react";
 import type { GlossConfig, HqRenderConfig } from "../../types/domain";
 import { HqPanelShape } from "../../types/domain";
 import { ColorField } from "./ColorField";
@@ -8,7 +7,6 @@ import { SegmentedControl } from "./SegmentedControl";
 export interface HqRenderSectionProps {
   value: HqRenderConfig;
   gloss: GlossConfig;
-  presetName: string;
   onChange(patch: Partial<HqRenderConfig>): void;
   onGlossChange(patch: Partial<GlossConfig>): void;
 }
@@ -25,24 +23,14 @@ const SHADOW_MODE_OPTIONS = [
 ];
 
 export function HqRenderSection(props: HqRenderSectionProps): JSX.Element {
-  const { value, onChange, onGlossChange, gloss, presetName } = props;
-  const [open, setOpen] = useState(true);
+  const { value, onChange, onGlossChange, gloss } = props;
 
   return (
     <section className="space-y-3">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between text-xs font-semibold text-[var(--text-primary)]"
-      >
-        <span>高质量渲染参数 · {presetName}</span>
-        <span className="text-[var(--text-secondary)]">{open ? "▾" : "▸"}</span>
-      </button>
       <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
         使用图标颜色自动生成面板（还原 MyDockFinder 全局遮罩效果）。此参数区仅对「高质量渲染」预设生效，切换到其他预设后自动失效。
       </p>
-      {open && (
-        <div className="space-y-3">
+      <div className="space-y-3">
           <RangeField
             id="hq-thresh"
             label="明暗分界阈值"
@@ -201,6 +189,18 @@ export function HqRenderSection(props: HqRenderSectionProps): JSX.Element {
                 step={0.05}
                 onChange={(strength) => onGlossChange({ strength })}
               />
+              <RangeField
+                id="hq-edge-gloss-feather"
+                label="内边缘羽化"
+                value={gloss.featherBlur}
+                min={0}
+                max={32}
+                step={1}
+                onChange={(featherBlur) => onGlossChange({ featherBlur })}
+              />
+              <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
+                羽化值使光泽向内平滑过渡，加强光泽与图标主体的过渡。
+              </p>
               <ColorField
                 id="hq-edge-gloss-light"
                 label="左上高光"
@@ -221,7 +221,6 @@ export function HqRenderSection(props: HqRenderSectionProps): JSX.Element {
             </p>
           </div>
         </div>
-      )}
     </section>
   );
 }

@@ -16,6 +16,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::import_paths,
             commands::render_preview,
+            commands::compute_wand_selection,
+            commands::render_source_image,
             commands::export_ico,
             commands::export_png,
             commands::apply_to_lnk,

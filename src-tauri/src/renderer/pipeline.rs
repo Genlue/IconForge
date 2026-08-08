@@ -1,6 +1,8 @@
 use image::RgbaImage;
 
-use crate::domain::config::{BackplateType, BrushStroke, ForegroundFit, IconShape, RenderConfig, WandStroke};
+use crate::domain::config::{
+    BackplateType, BrushStroke, EraserStroke, ForegroundFit, IconShape, RenderConfig, WandStroke,
+};
 use crate::error::app_error::AppError;
 
 use super::color::{parse_hex_rgba, LinearRgba};
@@ -21,6 +23,7 @@ pub struct ValidatedRenderConfig {
     pub foreground_offset_y: f32,
     pub foreground_rotation_degrees: f32,
     pub canvas_inset: f32,
+    pub content_scale_percent: f32,
     pub corner_radius: f32,
     pub squircle_exponent: f32,
     pub backplate_type: BackplateType,
@@ -41,6 +44,7 @@ pub struct ValidatedRenderConfig {
     pub gloss_strength: f32,
     pub gloss_light_color: String,
     pub gloss_dark_color: String,
+    pub gloss_feather_blur: f32,
     pub auto_cutout_enabled: bool,
     pub auto_cutout_tolerance: f32,
     pub auto_cutout_feather: f32,
@@ -92,6 +96,14 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
     if !config.canvas_inset.is_finite() || !(0.0..=112.0).contains(&config.canvas_inset) {
         return Err(AppError::InvalidArgument(
             "canvasInset must be in 0..=112".into(),
+        ));
+    }
+
+    if !config.content_scale_percent.is_finite()
+        || !(0.0..=100.0).contains(&config.content_scale_percent)
+    {
+        return Err(AppError::InvalidArgument(
+            "contentScalePercent must be in 0..=100".into(),
         ));
     }
 
@@ -156,6 +168,12 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
             "gloss strength must be in 0..=1".into(),
         ));
     }
+    if !config.gloss.feather_blur.is_finite() || !(0.0..=32.0).contains(&config.gloss.feather_blur)
+    {
+        return Err(AppError::InvalidArgument(
+            "gloss featherBlur must be in 0..=32".into(),
+        ));
+    }
     if !config.auto_cutout.tolerance.is_finite()
         || !(0.0..=100.0).contains(&config.auto_cutout.tolerance)
     {
@@ -185,6 +203,7 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
         foreground_offset_y: config.foreground_offset_y,
         foreground_rotation_degrees: config.foreground_rotation_degrees,
         canvas_inset: config.canvas_inset,
+        content_scale_percent: config.content_scale_percent,
         corner_radius: config.corner_radius,
         squircle_exponent: config.squircle_exponent,
         backplate_type: config.backplate_type,
@@ -205,6 +224,7 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
         gloss_strength: config.gloss.strength,
         gloss_light_color: config.gloss.light_color.clone(),
         gloss_dark_color: config.gloss.dark_color.clone(),
+        gloss_feather_blur: config.gloss.feather_blur,
         auto_cutout_enabled: config.auto_cutout.enabled,
         auto_cutout_tolerance: config.auto_cutout.tolerance,
         auto_cutout_feather: config.auto_cutout.feather,
@@ -233,7 +253,7 @@ pub fn render_master(
     // Adaptive high-quality renderer (port of iconmask.py) replaces the
     // classic layer stack entirely when enabled.
     if let Some(hq) = &config.hq {
-        return super::hq::render_hq(prepared, hq);
+        return apply_content_scale(super::hq::render_hq(prepared, hq)?, config);
     }
 
     let size = 256;
@@ -275,7 +295,29 @@ pub fn render_master(
     };
     over(&mut result, body);
 
-    Ok(result.into_srgb_rgba8())
+    apply_content_scale(result.into_srgb_rgba8(), config)
+}
+
+/// Final content scale: keeps the 256×256 canvas fixed while the rendered icon
+/// content is scaled about the center (0..=100%, 100% = unchanged).
+fn apply_content_scale(
+    image: RgbaImage,
+    config: &ValidatedRenderConfig,
+) -> Result<RgbaImage, AppError> {
+    let percent = config.content_scale_percent;
+    if percent >= 100.0 {
+        return Ok(image);
+    }
+    if percent <= 0.0 {
+        return Ok(RgbaImage::new(256, 256));
+    }
+    let target = ((256.0 * percent / 100.0).round()).clamp(1.0, 256.0) as u32;
+    let scaled = resize_from_master(&image, target)?;
+    let mut canvas = RgbaImage::new(256, 256);
+    let ox = (256 - target) / 2;
+    let oy = (256 - target) / 2;
+    image::imageops::overlay(&mut canvas, &scaled, ox as i64, oy as i64);
+    Ok(canvas)
 }
 
 fn render_backplate(
@@ -362,17 +404,20 @@ pub fn render_icon_set(
     Ok(results)
 }
 
-/// Render a master with magic-wand erasures applied to the original source
-/// before the (classic or HQ) pipeline stages run.
-pub fn render_master_with_wands(
+/// Render a master with magic-wand erasures and source-eraser strokes applied
+/// to the original source (before the auto cutout and the (classic or HQ)
+/// pipeline stages run).
+pub fn render_master_with_source_edits(
     source: &RgbaImage,
     config: &ValidatedRenderConfig,
     wand_strokes: &[WandStroke],
+    eraser_strokes: &[EraserStroke],
 ) -> Result<RgbaImage, AppError> {
-    if wand_strokes.is_empty() {
+    if wand_strokes.is_empty() && eraser_strokes.is_empty() {
         return render_master(source, config);
     }
     let mut edited = source.clone();
+    super::eraser::apply_eraser_strokes(&mut edited, eraser_strokes);
     super::wand::apply_erasures(&mut edited, wand_strokes);
     render_master(&edited, config)
 }
@@ -382,9 +427,10 @@ pub fn render_icon_set_with_brushes(
     config: &ValidatedRenderConfig,
     brush_strokes: &[BrushStroke],
     wand_strokes: &[WandStroke],
+    eraser_strokes: &[EraserStroke],
 ) -> Result<Vec<(u32, RgbaImage)>, AppError> {
     let master = super::brush::composite_brush_strokes(
-        render_master_with_wands(source, config, wand_strokes)?,
+        render_master_with_source_edits(source, config, wand_strokes, eraser_strokes)?,
         brush_strokes,
     )?;
     let mut results = Vec::with_capacity(super::ICO_SIZES.len());

@@ -26,6 +26,7 @@ export const DEFAULT_RENDER_CONFIG: Readonly<RenderConfig> = {
   foregroundOffsetY: 0,
   foregroundRotationDegrees: 0,
   canvasInset: 0,
+  contentScalePercent: 100,
   shape: IconShape.RoundedRectangle,
   cornerRadius: 52,
   squircleExponent: 4,
@@ -52,6 +53,7 @@ export const DEFAULT_RENDER_CONFIG: Readonly<RenderConfig> = {
     strength: 0.7,
     lightColor: "#FFFFFFFF",
     darkColor: "#00000080",
+    featherBlur: 0,
   },
   autoCutout: {
     enabled: false,

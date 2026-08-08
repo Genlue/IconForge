@@ -56,6 +56,7 @@ export interface GlossConfig {
   strength: number;
   lightColor: string;
   darkColor: string;
+  featherBlur: number;
 }
 
 export interface AutoCutoutConfig {
@@ -89,6 +90,7 @@ export interface RenderConfig {
   foregroundOffsetY: number;
   foregroundRotationDegrees: number;
   canvasInset: number;
+  contentScalePercent: number;
   shape: IconShape;
   cornerRadius: number;
   squircleExponent: number;
@@ -135,6 +137,19 @@ export interface WandStroke {
   tolerance: number;
 }
 
+export interface EraserStroke {
+  points: BrushPoint[];
+  size: number;
+  hardness: number;
+}
+
+export interface WandSelection {
+  x: number;
+  y: number;
+  tolerance: number;
+  maskPngBase64: string;
+}
+
 export interface BrushStroke {
   points: BrushPoint[];
   color: string;
@@ -156,7 +171,7 @@ export type ColorPickTarget =
   | "glossLight"
   | "glossDark";
 
-export type PreviewTool = "none" | "brush" | "eraser" | "eyedropper" | "magic-wand";
+export type PreviewTool = "none" | "brush" | "eraser" | "eyedropper" | "magic-wand" | "source-eraser";
 
 export interface ItemConfig {
   renderConfig: RenderConfig;
@@ -168,6 +183,9 @@ export interface ItemConfig {
   brushClipToMask: boolean;
   wandStrokes: WandStroke[];
   wandTolerance: number;
+  eraserStrokes: EraserStroke[];
+  eraserSize: number;
+  eraserHardness: number;
   activePresetId: string | null;
 }
 
@@ -176,4 +194,6 @@ export interface PresetDefinition {
   name: string;
   description: string;
   config: RenderConfig;
+  /** User-created presets are renamable and deletable. */
+  custom?: boolean;
 }

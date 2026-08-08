@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import type { BrushStroke, RenderConfig, UpscaleConfig, WandStroke } from "../types/domain";
+import type { BrushStroke, RenderConfig, UpscaleConfig, WandStroke, EraserStroke } from "../types/domain";
 import type { CommandError } from "../types/commands";
 import { commands } from "../lib/tauri";
 import { normalizeInvokeError } from "../types/errors";
@@ -18,6 +18,7 @@ export function useDebouncedPreview(
   upscaleConfig: UpscaleConfig,
   brushStrokes: BrushStroke[],
   wandStrokes: WandStroke[],
+  eraserStrokes: EraserStroke[],
   previewSize: number,
   delayMs: number = 250,
 ): DebouncedPreviewState {
@@ -42,6 +43,7 @@ export function useDebouncedPreview(
           upscaleConfig,
           brushStrokes,
           wandStrokes,
+          eraserStrokes,
           previewSize,
         });
         if (generationRef.current === generation) {
@@ -66,7 +68,7 @@ export function useDebouncedPreview(
       }
     }, delayMs);
     return () => clearTimeout(timer);
-  }, [sourcePath, config, upscaleConfig, brushStrokes, wandStrokes, previewSize, delayMs]);
+  }, [sourcePath, config, upscaleConfig, brushStrokes, wandStrokes, eraserStrokes, previewSize, delayMs]);
 
   return state;
 }

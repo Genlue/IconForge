@@ -13,7 +13,6 @@ export function StrokeSection(props: StrokeSectionProps): JSX.Element {
 
   return (
     <section className="space-y-3">
-      <h3 className="text-xs font-semibold text-[var(--text-primary)]">描边</h3>
       <RangeField
         id="stroke-width"
         label="宽度"

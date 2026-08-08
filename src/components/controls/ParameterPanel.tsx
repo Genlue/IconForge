@@ -7,6 +7,7 @@ import { BackplateSection } from "./BackplateSection";
 import { ShadowSection } from "./ShadowSection";
 import { StrokeSection } from "./StrokeSection";
 import { UpscaleSection } from "./UpscaleSection";
+import { CollapsibleSection } from "./CollapsibleSection";
 import { ExportActions } from "../export/ExportActions";
 import { BrushSection } from "./BrushSection";
 import { GlossSection } from "./GlossSection";
@@ -14,7 +15,7 @@ import { SourceProcessingSection } from "./SourceProcessingSection";
 import { HqRenderSection } from "./HqRenderSection";
 import { DEFAULT_RENDER_CONFIG, DEFAULT_UPSCALE_CONFIG } from "../../constants/defaults";
 
-const HQ_PRESET_IDS = new Set(["hq-render-light", "hq-render-dark"]);
+const HQ_PRESET_IDS = new Set(["hq-render"]);
 
 export function ParameterPanel(): JSX.Element {
   const selectedItemId = useIconForgeStore((s) => s.selectedItemId);
@@ -22,8 +23,12 @@ export function ParameterPanel(): JSX.Element {
   const itemConfig = useIconForgeStore((s) =>
     s.selectedItemId ? s.itemConfigs[s.selectedItemId] : undefined,
   );
-  const applyPreset = useIconForgeStore((s) => s.applyPreset);
+const applyPreset = useIconForgeStore((s) => s.applyPreset);
   const applyCurrentConfigToAll = useIconForgeStore((s) => s.applyCurrentConfigToAll);
+  const customPresets = useIconForgeStore((s) => s.customPresets);
+  const saveCurrentAsPreset = useIconForgeStore((s) => s.saveCurrentAsPreset);
+  const renamePreset = useIconForgeStore((s) => s.renamePreset);
+  const deletePreset = useIconForgeStore((s) => s.deletePreset);
   const updateRenderConfig = useIconForgeStore((s) => s.updateRenderConfig);
   const updateOuterShadow = useIconForgeStore((s) => s.updateOuterShadow);
   const updateStroke = useIconForgeStore((s) => s.updateStroke);
@@ -40,15 +45,25 @@ export function ParameterPanel(): JSX.Element {
 
   return (
     <aside className="h-full overflow-y-auto p-4" style={{ minWidth: 0 }}>
-      <div className="glass-panel space-y-5 p-4">
+      <div className="glass-panel space-y-1 p-4">
         {/* Presets */}
-        <section>
-          <h3 className="mb-2 text-xs font-semibold text-[var(--text-primary)]">预设</h3>
+        <CollapsibleSection title="预设">
           <PresetSelector
-            presets={BUILT_IN_PRESETS}
+            presets={[...BUILT_IN_PRESETS, ...customPresets]}
             activePresetId={activePresetId}
             onSelect={applyPreset}
+            onRename={renamePreset}
+            onDelete={deletePreset}
           />
+          <button
+            type="button"
+            onClick={saveCurrentAsPreset}
+            disabled={!hasSelection}
+            className="mt-2 w-full rounded-lg border border-[var(--accent)] bg-[var(--accent)]/10 px-3 py-2 text-xs text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/15 disabled:cursor-not-allowed disabled:opacity-40"
+            title="保存渲染风格设置（不含原图处理、画质增强与画笔）"
+          >
+            保存当前设置为预设
+          </button>
           <button
             type="button"
             onClick={applyCurrentConfigToAll}
@@ -63,96 +78,84 @@ export function ParameterPanel(): JSX.Element {
               右侧参数仅修改当前图标；需要统一时再使用上方按钮。
             </p>
           )}
-        </section>
-
-        <hr className="border-[var(--border-hairline)]" />
+        </CollapsibleSection>
 
         {/* Source enhancement */}
-        <UpscaleSection
-          value={upscaleConfig}
-          onChange={updateUpscaleConfig}
-        />
+        <CollapsibleSection title="画质增强">
+          <UpscaleSection
+            value={upscaleConfig}
+            onChange={updateUpscaleConfig}
+          />
+        </CollapsibleSection>
 
-        <hr className="border-[var(--border-hairline)]" />
-
-        {/* Original image editing (auto cutout + magic wand) */}
+        {/* Original image editing (auto cutout + magic wand + eraser) */}
         <SourceProcessingSection
           cutout={renderConfig.autoCutout}
           onCutoutChange={(autoCutout) => updateRenderConfig({ autoCutout: { ...renderConfig.autoCutout, ...autoCutout } })}
           disabled={!hasSelection}
         />
 
-        <hr className="border-[var(--border-hairline)]" />
-
-        {hqActive ? (
-          <>
+        {hqActive && (
+          <CollapsibleSection title="高质量渲染参数">
             <HqRenderSection
               value={renderConfig.hqRender}
               gloss={renderConfig.gloss}
-              presetName={activePresetId === "hq-render-dark" ? "深色" : isHqPreset ? "浅色" : renderConfig.hqRender.thresh >= 0.7 ? "深色" : "浅色"}
               onChange={(patch) => updateRenderConfig({ hqRender: { ...renderConfig.hqRender, ...patch } })}
               onGlossChange={(patch) => updateRenderConfig({ gloss: { ...renderConfig.gloss, ...patch } })}
             />
-            <hr className="border-[var(--border-hairline)]" />
-          </>
-        ) : (
+          </CollapsibleSection>
+        )}
+
+        {!hqActive && (
           <>
-            {/*
-              Classic styling parameters are hidden while an HQ preset is
-              active — the adaptive renderer ignores them entirely.
-            */}
-            <ForegroundSection
-              config={renderConfig}
-              onChange={updateRenderConfig}
-            />
+            <CollapsibleSection title="前景">
+              <ForegroundSection
+                config={renderConfig}
+                onChange={updateRenderConfig}
+              />
+            </CollapsibleSection>
 
-            <hr className="border-[var(--border-hairline)]" />
+            <CollapsibleSection title="形状">
+              <ShapeSection
+                config={renderConfig}
+                onChange={updateRenderConfig}
+              />
+            </CollapsibleSection>
 
-            {/* Shape */}
-            <ShapeSection
-              config={renderConfig}
-              onChange={updateRenderConfig}
-            />
+            <CollapsibleSection title="背板">
+              <BackplateSection
+                config={renderConfig}
+                onChange={updateRenderConfig}
+              />
+            </CollapsibleSection>
 
-            <hr className="border-[var(--border-hairline)]" />
+            <CollapsibleSection title="外阴影">
+              <ShadowSection
+                value={renderConfig.outerShadow}
+                onChange={updateOuterShadow}
+              />
+            </CollapsibleSection>
 
-            {/* Backplate */}
-            <BackplateSection
-              config={renderConfig}
-              onChange={updateRenderConfig}
-            />
+            <CollapsibleSection title="描边">
+              <StrokeSection
+                value={renderConfig.stroke}
+                onChange={updateStroke}
+              />
+            </CollapsibleSection>
 
-            <hr className="border-[var(--border-hairline)]" />
-
-            {/* Shadow */}
-            <ShadowSection
-              value={renderConfig.outerShadow}
-              onChange={updateOuterShadow}
-            />
-
-            <hr className="border-[var(--border-hairline)]" />
-
-            {/* Stroke */}
-            <StrokeSection
-              value={renderConfig.stroke}
-              onChange={updateStroke}
-            />
-
-            <hr className="border-[var(--border-hairline)]" />
-
-            <GlossSection value={renderConfig.gloss} onChange={(gloss) => updateRenderConfig({ gloss: { ...renderConfig.gloss, ...gloss } })} />
-
-            <hr className="border-[var(--border-hairline)]" />
+            <CollapsibleSection title="边缘光泽">
+              <GlossSection value={renderConfig.gloss} onChange={(gloss) => updateRenderConfig({ gloss: { ...renderConfig.gloss, ...gloss } })} />
+            </CollapsibleSection>
           </>
         )}
 
-        {/* Export */}
-        <BrushSection />
+        <CollapsibleSection title="画笔">
+          <BrushSection />
+        </CollapsibleSection>
 
-        <hr className="border-[var(--border-hairline)]" />
-
-        {/* Export */}
-        <ExportActions />
+        <CollapsibleSection title="导出">
+          <ExportActions />
+        </CollapsibleSection>
       </div>
     </aside>
   );

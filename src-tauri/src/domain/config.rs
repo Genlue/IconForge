@@ -65,6 +65,7 @@ pub struct GlossConfig {
     pub strength: f32,
     pub light_color: String,
     pub dark_color: String,
+    pub feather_blur: f32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -104,6 +105,7 @@ pub struct RenderConfig {
     pub foreground_offset_y: f32,
     pub foreground_rotation_degrees: f32,
     pub canvas_inset: f32,
+    pub content_scale_percent: f32,
     pub shape: IconShape,
     pub corner_radius: f32,
     pub squircle_exponent: f32,
@@ -168,4 +170,12 @@ pub struct WandPoint {
 pub struct WandStroke {
     pub points: Vec<WandPoint>,
     pub tolerance: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct EraserStroke {
+    pub points: Vec<WandPoint>,
+    pub size: f32,
+    pub hardness: f32,
 }

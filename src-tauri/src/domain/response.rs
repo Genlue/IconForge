@@ -30,6 +30,20 @@ pub struct RenderPreviewResponse {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct WandSelectionResponse {
+    pub mask_png_base64: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceImageResponse {
+    pub png_base64: String,
+    pub width: u32,
+    pub height: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ExportedFile {
     pub source_path: String,
     pub output_path: String,

@@ -10,6 +10,13 @@ pub fn render_edge_gloss(
 ) -> Result<LinearPremultipliedImage, AppError> {
     let size = 256u32;
     let inset = generate_inset_shape_mask(size, config, config.canvas_inset + config.gloss_width);
+    // Softening the inner boundary of the gloss band smooths the transition
+    // between the edge highlight and the icon body below it.
+    let inset = if config.gloss_feather_blur > 0.0 {
+        super::shadow::gaussian_blur_alpha(&inset, size, size, config.gloss_feather_blur)
+    } else {
+        inset
+    };
     let light = parse_hex_rgba(&config.gloss_light_color)?;
     let dark = parse_hex_rgba(&config.gloss_dark_color)?;
     let mut result = LinearPremultipliedImage::transparent(size, size);

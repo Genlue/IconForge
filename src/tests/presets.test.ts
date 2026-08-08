@@ -3,14 +3,22 @@ import { DEFAULT_RENDER_CONFIG } from "../constants/defaults";
 import { BUILT_IN_PRESETS, getPresetById } from "../constants/presets";
 
 describe("presets", () => {
-  it("should include the expanded built-in preset collection", () => {
-    expect(BUILT_IN_PRESETS.length).toBeGreaterThanOrEqual(6);
+  it("should include the collapsed preset collection", () => {
+    expect(
+      BUILT_IN_PRESETS.map((p) => p.id),
+    ).toEqual([
+      "hq-render",
+      "macos-classic-rounded",
+      "macos-gloss-dark",
+      "ios-squircle",
+      "minimal-glyph",
+    ]);
   });
 
   it("should find preset by id", () => {
     const preset = getPresetById("macos-classic-rounded");
     expect(preset).toBeDefined();
-    expect(preset?.name).toBe("macOS 经典圆角");
+    expect(preset?.name).toBe("扁平圆角矩形");
     expect(preset?.config.foregroundOffsetX).toBe(0);
     expect(preset?.config.foregroundOffsetY).toBe(0);
     expect(preset?.config.canvasInset).toBe(0);
@@ -30,7 +38,7 @@ describe("presets", () => {
     expect(DEFAULT_RENDER_CONFIG.stroke.width).toBe(0);
   });
 
-  it.each(["macos-gloss-light", "macos-gloss-dark"])(
+  it.each(["macos-gloss-dark"])(
     "should use the tuned macOS gloss values for %s",
     (presetId) => {
       const preset = getPresetById(presetId);
@@ -41,23 +49,26 @@ describe("presets", () => {
         strength: 1,
         lightColor: "#FFFFFFCC",
         darkColor: "#BFBFBFCC",
+        featherBlur: 0,
       });
     },
   );
+
+  it("removed presets are gone", () => {
+    expect(getPresetById("macos-gloss-light")).toBeUndefined();
+    expect(getPresetById("neon-depth")).toBeUndefined();
+  });
 
   it("should return undefined for unknown id", () => {
     expect(getPresetById("nonexistent")).toBeUndefined();
   });
 
-  it.each([
-    ["hq-render-light", 0.5, 0.22],
-    ["hq-render-dark", 0.9, 0.1],
-  ])("hq preset %s uses the reference parameters", (id, thresh, bg) => {
-    const preset = getPresetById(id);
+  it("hq preset uses the reference parameters", () => {
+    const preset = getPresetById("hq-render");
     expect(preset).toBeDefined();
     expect(preset?.config.hqRender.enabled).toBe(true);
-    expect(preset?.config.hqRender.thresh).toBe(thresh);
-    expect(preset?.config.hqRender.bg).toBe(bg);
+    expect(preset?.config.hqRender.thresh).toBe(0.5);
+    expect(preset?.config.hqRender.bg).toBe(0.22);
     expect(preset?.config.hqRender.iconRatio).toBe(0.66);
     expect(preset?.config.hqRender.lightMix).toBe(0.9);
     expect(preset?.config.hqRender.darkMix).toBe(0.72);
@@ -73,7 +84,7 @@ describe("presets", () => {
 
   it("non-hq presets keep hq rendering disabled", () => {
     for (const preset of BUILT_IN_PRESETS) {
-      if (preset.id.startsWith("hq-render-")) continue;
+      if (preset.id === "hq-render") continue;
       expect(preset.config.hqRender.enabled).toBe(false);
     }
   });

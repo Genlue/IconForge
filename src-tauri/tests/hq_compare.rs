@@ -20,6 +20,7 @@ mod tests {
             foreground_offset_y: 0.0,
             foreground_rotation_degrees: 0.0,
             canvas_inset: 0.0,
+            content_scale_percent: 100.0,
             shape: IconShape::Rectangle,
             corner_radius: 0.0,
             squircle_exponent: 4.0,
@@ -46,6 +47,7 @@ mod tests {
                 strength: 0.7,
                 light_color: "#FFFFFFFF".into(),
                 dark_color: "#00000080".into(),
+                feather_blur: 0.0,
             },
             auto_cutout: AutoCutoutConfig {
                 enabled: false,

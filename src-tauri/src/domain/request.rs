@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use super::config::{BrushStroke, RenderConfig, UpscaleConfig, WandStroke};
+use super::config::{BrushStroke, EraserStroke, RenderConfig, UpscaleConfig, WandPoint, WandStroke};
 use super::input::ExportMode;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -19,7 +19,33 @@ pub struct RenderPreviewRequest {
     pub brush_strokes: Vec<BrushStroke>,
     #[serde(default)]
     pub wand_strokes: Vec<WandStroke>,
+    #[serde(default)]
+    pub eraser_strokes: Vec<EraserStroke>,
     pub preview_size: u32,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WandSelectionRequest {
+    pub source_path: String,
+    pub upscale_config: UpscaleConfig,
+    pub point: WandPoint,
+    pub tolerance: f32,
+    #[serde(default)]
+    pub wand_strokes: Vec<WandStroke>,
+    #[serde(default)]
+    pub eraser_strokes: Vec<EraserStroke>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SourceImageRequest {
+    pub source_path: String,
+    pub upscale_config: UpscaleConfig,
+    #[serde(default)]
+    pub wand_strokes: Vec<WandStroke>,
+    #[serde(default)]
+    pub eraser_strokes: Vec<EraserStroke>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -39,6 +65,8 @@ pub struct ExportIcoItemRequest {
     pub brush_strokes: Vec<BrushStroke>,
     #[serde(default)]
     pub wand_strokes: Vec<WandStroke>,
+    #[serde(default)]
+    pub eraser_strokes: Vec<EraserStroke>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -66,4 +94,6 @@ pub struct ApplyToLnkItemRequest {
     pub brush_strokes: Vec<BrushStroke>,
     #[serde(default)]
     pub wand_strokes: Vec<WandStroke>,
+    #[serde(default)]
+    pub eraser_strokes: Vec<EraserStroke>,
 }

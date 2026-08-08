@@ -16,12 +16,9 @@ export function BrushSection(): JSX.Element {
 
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold text-[var(--text-primary)]">画笔</h3>
-        <span className="text-[10px] text-[var(--text-secondary)]">
-          {config?.brushStrokes.length ?? 0} 笔
-        </span>
-      </div>
+      <span className="text-[10px] text-[var(--text-secondary)]">
+        {config?.brushStrokes.length ?? 0} 笔
+      </span>
       <div className="grid grid-cols-2 gap-2">
         <button type="button" disabled={disabled} onClick={() => { updateBrushSettings({ mode: "paint" }); setPreviewTool(tool === "brush" ? "none" : "brush"); }} className={`rounded-lg border px-3 py-2 text-xs ${tool === "brush" ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--border-hairline)] bg-white/40"}`}>画笔</button>
         <button type="button" disabled={disabled} onClick={() => { updateBrushSettings({ mode: "erase" }); setPreviewTool(tool === "eraser" ? "none" : "eraser"); }} className={`rounded-lg border px-3 py-2 text-xs ${tool === "eraser" ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--border-hairline)] bg-white/40"}`}>涂抹擦除</button>
