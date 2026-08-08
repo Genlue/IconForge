@@ -12,6 +12,8 @@ export const DEFAULT_HQ_RENDER_CONFIG: Readonly<HqRenderConfig> = {
   iconLight: 0.08,
   corner: 0.22,
   shape: HqPanelShape.Rect,
+  offsetX: 0,
+  offsetY: 0,
   shadowOpacity: 0.22,
   shadowBlurFactor: 0.022,
   shadowOffsetFactor: 0.012,

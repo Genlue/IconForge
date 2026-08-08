@@ -103,6 +103,29 @@ export function HqRenderSection(props: HqRenderSectionProps): JSX.Element {
             step={0.01}
             onChange={(corner) => onChange({ corner })}
           />
+          <div className="grid grid-cols-2 gap-2">
+            <RangeField
+              id="hq-offset-x"
+              label="位置 X"
+              value={value.offsetX}
+              min={-64}
+              max={64}
+              step={1}
+              onChange={(offsetX) => onChange({ offsetX })}
+            />
+            <RangeField
+              id="hq-offset-y"
+              label="位置 Y"
+              value={value.offsetY}
+              min={-64}
+              max={64}
+              step={1}
+              onChange={(offsetY) => onChange({ offsetY })}
+            />
+          </div>
+          <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
+            在 256 画布内平移图标本体（含阴影与光晕），用于调整图标在面板内的位置。
+          </p>
           <div className="space-y-1">
             <span className="text-xs text-[var(--text-secondary)]">面板形状</span>
             <SegmentedControl

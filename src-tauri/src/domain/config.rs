@@ -89,6 +89,8 @@ pub struct HqRenderConfig {
     pub icon_light: f32,
     pub corner: f32,
     pub shape: HqPanelShape,
+    pub offset_x: f32,
+    pub offset_y: f32,
     pub shadow_opacity: f32,
     pub shadow_blur_factor: f32,
     pub shadow_offset_factor: f32,

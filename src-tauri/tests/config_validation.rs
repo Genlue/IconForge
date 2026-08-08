@@ -56,6 +56,8 @@ auto_cutout: AutoCutoutConfig {
                 icon_light: 0.08,
                 corner: 0.22,
                 shape: HqPanelShape::Rect,
+                offset_x: 0.0,
+                offset_y: 0.0,
                 shadow_opacity: 0.22,
                 shadow_blur_factor: 0.022,
                 shadow_offset_factor: 0.012,

@@ -19,6 +19,8 @@ pub struct ValidatedHqRenderConfig {
     pub icon_light: f32,
     pub corner: f32,
     pub shape: HqPanelShape,
+    pub offset_x: f32,
+    pub offset_y: f32,
     pub shadow_opacity: f32,
     pub shadow_blur_factor: f32,
     pub shadow_offset_factor: f32,
@@ -54,6 +56,8 @@ pub fn validate_hq(config: &RenderConfig) -> Result<ValidatedHqRenderConfig, App
         icon_light: check(hq.icon_light, 0.0, 1.0, "hq iconLight")?,
         corner: check(hq.corner, 0.02, 0.5, "hq corner")?,
         shape: hq.shape,
+        offset_x: check(hq.offset_x, -64.0, 64.0, "hq offsetX")?,
+        offset_y: check(hq.offset_y, -64.0, 64.0, "hq offsetY")?,
         shadow_opacity: check(hq.shadow_opacity, 0.0, 1.0, "hq shadowOpacity")?,
         shadow_blur_factor: check(hq.shadow_blur_factor, 0.0, 0.1, "hq shadowBlurFactor")?,
         shadow_offset_factor: check(
@@ -423,8 +427,12 @@ fn render_icon_layer(icon: &RgbaImage, size: usize, cfg: &ValidatedHqRenderConfi
     } else {
         1.0
     };
-    let ox = (w as isize - nw as isize) / 2;
-    let oy = (h as isize - nh as isize) / 2 + ((size as f32 * 0.012).floor() as isize).max(1);
+    // Centered placement plus the adjustable X/Y offset (and the reference
+    // script's fixed 1.2% downward bias, which 0 position keeps).
+    let ox = (w as isize - nw as isize) / 2 + cfg.offset_x.round() as isize;
+    let oy = (h as isize - nh as isize) / 2
+        + ((size as f32 * 0.012).floor() as isize).max(1)
+        + cfg.offset_y.round() as isize;
     for yy in 0..nh as isize {
         for xx in 0..nw as isize {
             let dx_ = ox + xx;
@@ -755,6 +763,8 @@ mod tests {
             icon_light: 0.08,
             corner: 0.22,
             shape: HqPanelShape::Rect,
+            offset_x: 0.0,
+            offset_y: 0.0,
             shadow_opacity: 0.22,
             shadow_blur_factor: 0.022,
             shadow_offset_factor: 0.012,

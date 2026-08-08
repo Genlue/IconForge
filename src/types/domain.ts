@@ -76,6 +76,8 @@ export interface HqRenderConfig {
   iconLight: number;
   corner: number;
   shape: HqPanelShape;
+  offsetX: number;
+  offsetY: number;
   shadowOpacity: number;
   shadowBlurFactor: number;
   shadowOffsetFactor: number;

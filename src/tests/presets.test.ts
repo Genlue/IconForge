@@ -80,6 +80,8 @@ describe("presets", () => {
     expect(preset?.config.hqRender.shadowOffsetFactor).toBe(0.012);
     expect(preset?.config.hqRender.shadowFade).toBe(0.25);
     expect(preset?.config.hqRender.shadowMode).toBe("icon");
+    expect(preset?.config.hqRender.offsetX).toBe(0);
+    expect(preset?.config.hqRender.offsetY).toBe(0);
   });
 
   it("non-hq presets keep hq rendering disabled", () => {
