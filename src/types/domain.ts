@@ -78,6 +78,8 @@ export interface HqRenderConfig {
   shape: HqPanelShape;
   offsetX: number;
   offsetY: number;
+  customBgEnabled: boolean;
+  customBgColor: string;
   shadowOpacity: number;
   shadowBlurFactor: number;
   shadowOffsetFactor: number;

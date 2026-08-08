@@ -126,6 +126,31 @@ export function HqRenderSection(props: HqRenderSectionProps): JSX.Element {
           <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
             在 256 画布内平移图标本体（含阴影与光晕），用于调整图标在面板内的位置。
           </p>
+          <div className="space-y-3 rounded-lg border border-[var(--border-hairline)] p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[var(--text-primary)]">自定义基底颜色</span>
+              <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                <input
+                  type="checkbox"
+                  checked={value.customBgEnabled}
+                  onChange={(e) => onChange({ customBgEnabled: e.target.checked })}
+                  className="rounded"
+                />
+                启用
+              </label>
+            </div>
+            <div className={value.customBgEnabled ? "space-y-2" : "pointer-events-none space-y-2 opacity-40"}>
+              <ColorField
+                id="hq-custom-bg"
+                label="基底颜色"
+                value={value.customBgColor}
+                onChange={(customBgColor) => onChange({ customBgColor })}
+              />
+              <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
+                固定使用该颜色作为面板基底（代替从图标主色自动推导的深浅色），径向光晕仍按图标配色。
+              </p>
+            </div>
+          </div>
           <div className="space-y-1">
             <span className="text-xs text-[var(--text-secondary)]">面板形状</span>
             <SegmentedControl

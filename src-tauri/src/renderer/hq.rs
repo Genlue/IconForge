@@ -21,6 +21,7 @@ pub struct ValidatedHqRenderConfig {
     pub shape: HqPanelShape,
     pub offset_x: f32,
     pub offset_y: f32,
+    pub custom_bg: Option<[f32; 3]>,
     pub shadow_opacity: f32,
     pub shadow_blur_factor: f32,
     pub shadow_offset_factor: f32,
@@ -58,6 +59,12 @@ pub fn validate_hq(config: &RenderConfig) -> Result<ValidatedHqRenderConfig, App
         shape: hq.shape,
         offset_x: check(hq.offset_x, -64.0, 64.0, "hq offsetX")?,
         offset_y: check(hq.offset_y, -64.0, 64.0, "hq offsetY")?,
+        custom_bg: if hq.custom_bg_enabled {
+            let c = super::color::parse_hex_srgb_rgba(&hq.custom_bg_color)?;
+            Some([c[0] * 255.0, c[1] * 255.0, c[2] * 255.0])
+        } else {
+            None
+        },
         shadow_opacity: check(hq.shadow_opacity, 0.0, 1.0, "hq shadowOpacity")?,
         shadow_blur_factor: check(hq.shadow_blur_factor, 0.0, 0.1, "hq shadowBlurFactor")?,
         shadow_offset_factor: check(
@@ -99,7 +106,11 @@ pub fn render_hq(
     let dom = dominant_color(&icon);
     let lum = luminance_of(&icon);
     let bright = lum > cfg.thresh;
-    let panel = if bright {
+    // Panel base: a user-chosen solid color overrides the automatic
+    // light/dark derivation; the radial halo still uses the icon colors.
+    let panel = if let Some(bg) = &cfg.custom_bg {
+        *bg
+    } else if bright {
         [
             dom[0] + (255.0 - dom[0]) * cfg.light_mix,
             dom[1] + (255.0 - dom[1]) * cfg.light_mix,
@@ -765,6 +776,7 @@ mod tests {
             shape: HqPanelShape::Rect,
             offset_x: 0.0,
             offset_y: 0.0,
+            custom_bg: None,
             shadow_opacity: 0.22,
             shadow_blur_factor: 0.022,
             shadow_offset_factor: 0.012,

@@ -19,7 +19,7 @@ export function SegmentedControl<T extends string>(
         <button
           key={opt.value}
           onClick={() => props.onChange(opt.value)}
-          className={`flex-1 px-2 py-1 text-xs transition-colors ${
+          className={`min-w-0 flex-1 truncate px-1.5 py-1 text-xs transition-colors ${
             props.value === opt.value
               ? "bg-[var(--accent)] text-white"
               : "text-[var(--text-secondary)] hover:bg-white/60"

@@ -82,6 +82,7 @@ describe("presets", () => {
     expect(preset?.config.hqRender.shadowMode).toBe("icon");
     expect(preset?.config.hqRender.offsetX).toBe(0);
     expect(preset?.config.hqRender.offsetY).toBe(0);
+    expect(preset?.config.hqRender.customBgEnabled).toBe(false);
   });
 
   it("non-hq presets keep hq rendering disabled", () => {

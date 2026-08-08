@@ -33,13 +33,10 @@ export function RangeField(props: RangeFieldProps): JSX.Element {
     <div className={`space-y-1 ${props.disabled ? "opacity-40" : ""}`}>
       <label
         htmlFor={props.id}
-        className="flex justify-between text-xs text-[var(--text-secondary)]"
+        className="flex items-center justify-between gap-2 text-xs text-[var(--text-secondary)]"
       >
-        <span>{props.label}</span>
-        <span>
-          {props.value}
-          {props.unit ?? ""}
-        </span>
+        <span className="min-w-0 truncate">{props.label}</span>
+        <span className="shrink-0 tabular-nums">{props.value}{props.unit ?? ""}</span>
       </label>
       <div className="flex items-center gap-2">
         <input
@@ -51,7 +48,7 @@ export function RangeField(props: RangeFieldProps): JSX.Element {
           value={props.value}
           disabled={props.disabled}
           onChange={handleChange}
-          className="flex-1"
+          className="min-w-0 flex-1"
         />
         <input
           type="number"
@@ -61,7 +58,7 @@ export function RangeField(props: RangeFieldProps): JSX.Element {
           value={props.value}
           disabled={props.disabled}
           onChange={handleNumberInput}
-          className="w-14 rounded-md border border-[var(--border-hairline)] bg-white/40 px-1.5 py-0.5 text-xs text-[var(--text-primary)]"
+          className="w-[4.2rem] shrink-0 rounded-md border border-[var(--border-hairline)] bg-white/40 px-1 py-0.5 text-right text-[11px] leading-none text-[var(--text-primary)]"
         />
       </div>
     </div>

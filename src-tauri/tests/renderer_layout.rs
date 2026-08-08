@@ -59,6 +59,8 @@ mod tests {
                 shape: HqPanelShape::Rect,
                 offset_x: 0.0,
                 offset_y: 0.0,
+                custom_bg_enabled: false,
+                custom_bg_color: "#FFFFFFFF".into(),
                 shadow_opacity: 0.22,
                 shadow_blur_factor: 0.022,
                 shadow_offset_factor: 0.012,

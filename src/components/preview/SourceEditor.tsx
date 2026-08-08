@@ -30,6 +30,8 @@ export function SourceEditor(): JSX.Element | null {
   const updateRenderConfig = useIconForgeStore((s) => s.updateRenderConfig);
   const setWandTolerance = useIconForgeStore((s) => s.setWandTolerance);
   const updateEraserSettings = useIconForgeStore((s) => s.updateEraserSettings);
+  const undoEraserStroke = useIconForgeStore((s) => s.undoEraserStroke);
+  const undoWandStroke = useIconForgeStore((s) => s.undoWandStroke);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -216,6 +218,25 @@ export function SourceEditor(): JSX.Element | null {
           >
             橡皮擦
           </button>
+          <span className="mx-1 h-4 w-px bg-[var(--border-hairline)]" />
+          <button
+            type="button"
+            disabled={(itemConfig.eraserStrokes.length ?? 0) === 0}
+            onClick={undoEraserStroke}
+            className="rounded-lg border border-[var(--border-hairline)] bg-white/40 px-3 py-1.5 text-xs text-[var(--text-primary)] disabled:opacity-40"
+            title="撤销最近一次擦除"
+          >
+            撤销擦除
+          </button>
+          <button
+            type="button"
+            disabled={(itemConfig.wandStrokes.length ?? 0) === 0}
+            onClick={undoWandStroke}
+            className="rounded-lg border border-[var(--border-hairline)] bg-white/40 px-3 py-1.5 text-xs text-[var(--text-primary)] disabled:opacity-40"
+            title="撤销最近一次魔棒删除"
+          >
+            撤销删除
+          </button>
           {previewTool === "magic-wand" && (
             <>
               <button
@@ -261,7 +282,7 @@ export function SourceEditor(): JSX.Element | null {
           />
           自动抠图
         </label>
-        <div className="w-32">
+        <div className="w-40">
           <RangeField
             id="editor-cutout-tolerance"
             label="背景容差"
@@ -273,7 +294,7 @@ export function SourceEditor(): JSX.Element | null {
             onChange={(tolerance) => updateRenderConfig({ autoCutout: { ...itemConfig.renderConfig.autoCutout, tolerance } })}
           />
         </div>
-        <div className="w-32">
+        <div className="w-40">
           <RangeField
             id="editor-cutout-feather"
             label="边缘羽化"
@@ -285,7 +306,7 @@ export function SourceEditor(): JSX.Element | null {
             onChange={(feather) => updateRenderConfig({ autoCutout: { ...itemConfig.renderConfig.autoCutout, feather } })}
           />
         </div>
-        <div className="w-32">
+        <div className="w-40">
           <RangeField
             id="editor-wand-tolerance"
             label="魔棒容差"
@@ -299,7 +320,7 @@ export function SourceEditor(): JSX.Element | null {
             }}
           />
         </div>
-        <div className="w-32">
+        <div className="w-40">
           <RangeField
             id="editor-eraser-size"
             label="橡皮擦大小"
@@ -310,7 +331,7 @@ export function SourceEditor(): JSX.Element | null {
             onChange={(size) => updateEraserSettings({ size })}
           />
         </div>
-        <div className="w-32">
+        <div className="w-40">
           <RangeField
             id="editor-eraser-hardness"
             label="橡皮擦硬度"
