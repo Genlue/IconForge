@@ -1,6 +1,6 @@
 [package]
 name = "iconforge"
-version = "1.4.2"
+version = "1.4.3"
 description = "IconForge - Icon customization tool"
 authors = []
 edition = "2021"

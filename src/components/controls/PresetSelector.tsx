@@ -69,7 +69,7 @@ export function PresetSelector(props: PresetSelectorProps): JSX.Element {
           renamingId === p.id ? (
             <div
               key={p.id}
-              className="flex items-center gap-1 rounded-lg border border-[var(--accent)] bg-white/60 px-1 py-0.5"
+              className="flex items-center gap-1 rounded-lg border border-[var(--accent)] bg-[var(--surface-control)] px-1 py-0.5"
             >
               <input
                 value={draft}
@@ -78,7 +78,7 @@ export function PresetSelector(props: PresetSelectorProps): JSX.Element {
                   if (e.key === "Enter") commitRename(p);
                   if (e.key === "Escape") setRenamingId(null);
                 }}
-                className="w-28 rounded border border-[var(--border-hairline)] bg-white px-1.5 py-0.5 text-xs text-[var(--text-primary)]"
+                className="w-28 rounded border border-[var(--border-hairline)] bg-[var(--surface-input)] px-1.5 py-0.5 text-xs text-[var(--text-primary)]"
                 autoFocus
               />
               <button
@@ -118,14 +118,14 @@ export function PresetSelector(props: PresetSelectorProps): JSX.Element {
           <div
             ref={menuRef}
             role="menu"
-            className="fixed z-[100] min-w-[9rem] overflow-hidden rounded-lg border border-[var(--border-hairline)] bg-white shadow-xl"
+            className="fixed z-[100] min-w-[9rem] overflow-hidden rounded-lg border border-[var(--border-hairline)] bg-[var(--surface-overlay)] shadow-[var(--shadow-panel)]"
             style={{ left: menu.x, top: menu.y }}
           >
             <button
               type="button"
               role="menuitem"
               onClick={() => startRename(menu.preset)}
-              className="block w-full px-3 py-2 text-left text-xs text-[var(--text-primary)] hover:bg-violet-50"
+              className="block w-full px-3 py-2 text-left text-xs text-[var(--text-primary)] hover:bg-[var(--surface-control-hover)]"
             >
               重命名…
             </button>
@@ -136,7 +136,7 @@ export function PresetSelector(props: PresetSelectorProps): JSX.Element {
                 props.onDelete?.(menu.preset.id);
                 setMenu(null);
               }}
-              className="block w-full px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50"
+              className="block w-full px-3 py-2 text-left text-xs text-[var(--danger-text)] hover:bg-[var(--danger-surface)]"
             >
               删除
             </button>
