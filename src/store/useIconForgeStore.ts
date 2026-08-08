@@ -9,6 +9,8 @@ import type {
   OuterShadowConfig,
   StrokeConfig,
   UpscaleConfig,
+  HqRenderConfig,
+  WandStroke,
 } from "../types/domain";
 import { ExportMode } from "../types/domain";
 import type {
@@ -40,6 +42,7 @@ export interface IconForgeState {
   updateRenderConfig(patch: Partial<RenderConfig>): void;
   updateOuterShadow(patch: Partial<OuterShadowConfig>): void;
   updateStroke(patch: Partial<StrokeConfig>): void;
+  updateHqRender(patch: Partial<HqRenderConfig>): void;
   updateUpscaleConfig(patch: Partial<UpscaleConfig>): void;
   applyPreset(presetId: string): void;
   applyCurrentConfigToAll(): void;
@@ -50,6 +53,10 @@ export interface IconForgeState {
   undoBrushStroke(): void;
   clearBrushStrokes(): void;
   updateBrushSettings(patch: { color?: string; size?: number; mode?: "paint" | "erase"; clipToMask?: boolean }): void;
+  setWandTolerance(tolerance: number): void;
+  addWandStroke(stroke: WandStroke): void;
+  undoWandStroke(): void;
+  clearWandStrokes(): void;
   exportAsIco(): Promise<void>;
   exportAllAsIco(): Promise<void>;
   exportAsPng(): Promise<void>;
@@ -154,6 +161,17 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
       renderConfig: {
         ...config.renderConfig,
         stroke: { ...config.renderConfig.stroke, ...patch },
+      },
+      activePresetId: null,
+    })));
+  },
+
+  updateHqRender: (patch: Partial<HqRenderConfig>) => {
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
+      renderConfig: {
+        ...config.renderConfig,
+        hqRender: { ...config.renderConfig.hqRender, ...patch },
       },
       activePresetId: null,
     })));
@@ -293,6 +311,34 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
     })));
   },
 
+  setWandTolerance: (wandTolerance) => {
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
+      wandTolerance,
+    })));
+  },
+
+  addWandStroke: (stroke) => {
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
+      wandStrokes: [...config.wandStrokes, cloneWandStroke(stroke)],
+    })));
+  },
+
+  undoWandStroke: () => {
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
+      wandStrokes: config.wandStrokes.slice(0, -1),
+    })));
+  },
+
+  clearWandStrokes: () => {
+    set((state) => updateSelectedConfig(state, (config) => ({
+      ...config,
+      wandStrokes: [],
+    })));
+  },
+
   exportAsIco: async () => {
     const { items, itemConfigs, selectedItemId } = get();
     const selectedItems = items
@@ -332,6 +378,7 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
           renderConfig: config.renderConfig,
           upscaleConfig: config.upscaleConfig,
           brushStrokes: config.brushStrokes,
+          wandStrokes: config.wandStrokes,
         }] : [];
       });
     set({ isExporting: true, error: null, lastExportResult: null });
@@ -363,6 +410,7 @@ async function exportItemsAsIco(
       renderConfig: config.renderConfig,
       upscaleConfig: config.upscaleConfig,
       brushStrokes: config.brushStrokes,
+      wandStrokes: config.wandStrokes,
     }] : [];
   });
   set({ isExporting: true, error: null, lastExportResult: null });
@@ -389,6 +437,8 @@ function createDefaultItemConfig(): ItemConfig {
     brushSize: 8,
     brushMode: "paint",
     brushClipToMask: true,
+    wandStrokes: [],
+    wandTolerance: 72,
     activePresetId: "macos-classic-rounded",
   };
 }
@@ -400,6 +450,7 @@ function cloneRenderConfig(config: RenderConfig): RenderConfig {
     stroke: { ...config.stroke },
     gloss: { ...config.gloss },
     autoCutout: { ...config.autoCutout },
+    hqRender: { ...config.hqRender },
   };
 }
 
@@ -412,6 +463,8 @@ function cloneItemConfig(config: ItemConfig): ItemConfig {
     brushSize: config.brushSize,
     brushMode: config.brushMode,
     brushClipToMask: config.brushClipToMask,
+    wandStrokes: config.wandStrokes.map(cloneWandStroke),
+    wandTolerance: config.wandTolerance,
     activePresetId: config.activePresetId,
   };
 }
@@ -424,7 +477,7 @@ async function exportItemsAsPng(
 ): Promise<void> {
   const exportItems = items.flatMap((item) => {
     const config = itemConfigs[item.id];
-    return config ? [{ sourcePath: item.sourcePath, renderConfig: config.renderConfig, upscaleConfig: config.upscaleConfig, brushStrokes: config.brushStrokes }] : [];
+    return config ? [{ sourcePath: item.sourcePath, renderConfig: config.renderConfig, upscaleConfig: config.upscaleConfig, brushStrokes: config.brushStrokes, wandStrokes: config.wandStrokes }] : [];
   });
   if (exportItems.length === 0) return;
   set({ isExporting: true, error: null, lastExportResult: null });
@@ -437,6 +490,13 @@ async function exportItemsAsPng(
 }
 
 function cloneBrushStroke(stroke: BrushStroke): BrushStroke {
+  return {
+    ...stroke,
+    points: stroke.points.map((point) => ({ ...point })),
+  };
+}
+
+function cloneWandStroke(stroke: WandStroke): WandStroke {
   return {
     ...stroke,
     points: stroke.points.map((point) => ({ ...point })),

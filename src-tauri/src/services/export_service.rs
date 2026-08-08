@@ -24,12 +24,14 @@ pub fn prepare_ico(
     config: &RenderConfig,
     upscale_config: &UpscaleConfig,
     brush_strokes: &[BrushStroke],
+    wand_strokes: &[crate::domain::config::WandStroke],
     state: &AppState,
 ) -> Result<Vec<u8>, AppError> {
     let validated = renderer::validate_config(config)?;
-    let source =
+let source =
         super::source_service::load_processed_source(app, source_path, upscale_config, state)?;
-    let icon_set = renderer::render_icon_set_with_brushes(&source, &validated, brush_strokes)?;
+    let icon_set =
+        renderer::render_icon_set_with_brushes(&source, &validated, brush_strokes, wand_strokes)?;
     encode_ico(&icon_set)
 }
 
@@ -85,7 +87,8 @@ pub fn export_ico_batch(
                     &item.render_config,
                     &item.upscale_config,
                     &item.brush_strokes,
-                    state,
+                &item.wand_strokes,
+                state,
                 )?;
                 ico_writer::write_ico_atomic(&output_path, &ico_bytes)?;
                 Ok(ExportIcoResponse {
@@ -134,6 +137,7 @@ pub fn export_ico_batch(
                 &item.render_config,
                 &item.upscale_config,
                 &item.brush_strokes,
+                &item.wand_strokes,
                 state,
             ) {
                 Ok(ico_bytes) => match ico_writer::write_ico_atomic(&output_path, &ico_bytes) {
@@ -239,7 +243,7 @@ pub fn export_png_batch(
             )?;
             let validated = renderer::validate_config(&item.render_config)?;
             renderer::composite_brush_strokes(
-                renderer::render_master(&source, &validated)?,
+                renderer::render_master_with_wands(&source, &validated, &item.wand_strokes)?,
                 &item.brush_strokes,
             )
         })();
@@ -333,6 +337,7 @@ pub fn apply_to_shortcuts(
             &item.render_config,
             &item.upscale_config,
             &item.brush_strokes,
+            &item.wand_strokes,
             &validated,
             state,
         ) {
@@ -358,12 +363,14 @@ fn process_single_shortcut(
     raw_config: &RenderConfig,
     upscale_config: &UpscaleConfig,
     brush_strokes: &[crate::domain::config::BrushStroke],
+    wand_strokes: &[crate::domain::config::WandStroke],
     config: &renderer::ValidatedRenderConfig,
     state: &AppState,
 ) -> Result<AppliedShortcut, AppError> {
     let source =
         super::source_service::load_processed_source(app, lnk_path, upscale_config, state)?;
-    let icon_set = renderer::render_icon_set_with_brushes(&source, config, brush_strokes)?;
+    let icon_set =
+        renderer::render_icon_set_with_brushes(&source, config, brush_strokes, wand_strokes)?;
     let ico_bytes = encode_ico(&icon_set)?;
 
     let managed_path =

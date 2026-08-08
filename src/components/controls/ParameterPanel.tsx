@@ -10,8 +10,11 @@ import { UpscaleSection } from "./UpscaleSection";
 import { ExportActions } from "../export/ExportActions";
 import { BrushSection } from "./BrushSection";
 import { GlossSection } from "./GlossSection";
-import { CutoutSection } from "./CutoutSection";
+import { SourceProcessingSection } from "./SourceProcessingSection";
+import { HqRenderSection } from "./HqRenderSection";
 import { DEFAULT_RENDER_CONFIG, DEFAULT_UPSCALE_CONFIG } from "../../constants/defaults";
+
+const HQ_PRESET_IDS = new Set(["hq-render-light", "hq-render-dark"]);
 
 export function ParameterPanel(): JSX.Element {
   const selectedItemId = useIconForgeStore((s) => s.selectedItemId);
@@ -29,6 +32,11 @@ export function ParameterPanel(): JSX.Element {
   const upscaleConfig = itemConfig?.upscaleConfig ?? DEFAULT_UPSCALE_CONFIG;
   const activePresetId = itemConfig?.activePresetId ?? null;
   const hasSelection = selectedItemId !== null && itemConfig !== undefined;
+  const isHqPreset = HQ_PRESET_IDS.has(activePresetId ?? "");
+  // Stay visible while the item is in HQ mode even after the user tweaks a
+  // parameter (which clears activePresetId); only leaving for another preset
+  // turns the adaptive renderer off.
+  const hqActive = isHqPreset || renderConfig.hqRender.enabled;
 
   return (
     <aside className="h-full overflow-y-auto p-4" style={{ minWidth: 0 }}>
@@ -67,53 +75,76 @@ export function ParameterPanel(): JSX.Element {
 
         <hr className="border-[var(--border-hairline)]" />
 
-        <CutoutSection value={renderConfig.autoCutout} onChange={(autoCutout) => updateRenderConfig({ autoCutout: { ...renderConfig.autoCutout, ...autoCutout } })} />
-
-        <hr className="border-[var(--border-hairline)]" />
-
-        {/* Foreground */}
-        <ForegroundSection
-          config={renderConfig}
-          onChange={updateRenderConfig}
+        {/* Original image editing (auto cutout + magic wand) */}
+        <SourceProcessingSection
+          cutout={renderConfig.autoCutout}
+          onCutoutChange={(autoCutout) => updateRenderConfig({ autoCutout: { ...renderConfig.autoCutout, ...autoCutout } })}
+          disabled={!hasSelection}
         />
 
         <hr className="border-[var(--border-hairline)]" />
 
-        {/* Shape */}
-        <ShapeSection
-          config={renderConfig}
-          onChange={updateRenderConfig}
-        />
+        {hqActive ? (
+          <>
+            <HqRenderSection
+              value={renderConfig.hqRender}
+              gloss={renderConfig.gloss}
+              presetName={activePresetId === "hq-render-dark" ? "深色" : isHqPreset ? "浅色" : renderConfig.hqRender.thresh >= 0.7 ? "深色" : "浅色"}
+              onChange={(patch) => updateRenderConfig({ hqRender: { ...renderConfig.hqRender, ...patch } })}
+              onGlossChange={(patch) => updateRenderConfig({ gloss: { ...renderConfig.gloss, ...patch } })}
+            />
+            <hr className="border-[var(--border-hairline)]" />
+          </>
+        ) : (
+          <>
+            {/*
+              Classic styling parameters are hidden while an HQ preset is
+              active — the adaptive renderer ignores them entirely.
+            */}
+            <ForegroundSection
+              config={renderConfig}
+              onChange={updateRenderConfig}
+            />
 
-        <hr className="border-[var(--border-hairline)]" />
+            <hr className="border-[var(--border-hairline)]" />
 
-        {/* Backplate */}
-        <BackplateSection
-          config={renderConfig}
-          onChange={updateRenderConfig}
-        />
+            {/* Shape */}
+            <ShapeSection
+              config={renderConfig}
+              onChange={updateRenderConfig}
+            />
 
-        <hr className="border-[var(--border-hairline)]" />
+            <hr className="border-[var(--border-hairline)]" />
 
-        {/* Shadow */}
-        <ShadowSection
-          value={renderConfig.outerShadow}
-          onChange={updateOuterShadow}
-        />
+            {/* Backplate */}
+            <BackplateSection
+              config={renderConfig}
+              onChange={updateRenderConfig}
+            />
 
-        <hr className="border-[var(--border-hairline)]" />
+            <hr className="border-[var(--border-hairline)]" />
 
-        {/* Stroke */}
-        <StrokeSection
-          value={renderConfig.stroke}
-          onChange={updateStroke}
-        />
+            {/* Shadow */}
+            <ShadowSection
+              value={renderConfig.outerShadow}
+              onChange={updateOuterShadow}
+            />
 
-        <hr className="border-[var(--border-hairline)]" />
+            <hr className="border-[var(--border-hairline)]" />
 
-        <GlossSection value={renderConfig.gloss} onChange={(gloss) => updateRenderConfig({ gloss: { ...renderConfig.gloss, ...gloss } })} />
+            {/* Stroke */}
+            <StrokeSection
+              value={renderConfig.stroke}
+              onChange={updateStroke}
+            />
 
-        <hr className="border-[var(--border-hairline)]" />
+            <hr className="border-[var(--border-hairline)]" />
+
+            <GlossSection value={renderConfig.gloss} onChange={(gloss) => updateRenderConfig({ gloss: { ...renderConfig.gloss, ...gloss } })} />
+
+            <hr className="border-[var(--border-hairline)]" />
+          </>
+        )}
 
         {/* Export */}
         <BrushSection />

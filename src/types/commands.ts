@@ -1,4 +1,4 @@
-import type { BrushStroke, InputItem, RenderConfig, UpscaleConfig, ExportMode } from "./domain";
+import type { BrushStroke, InputItem, RenderConfig, UpscaleConfig, WandStroke, ExportMode } from "./domain";
 
 export interface ImportPathsRequest {
   paths: string[];
@@ -21,6 +21,7 @@ export interface RenderPreviewRequest {
   renderConfig: RenderConfig;
   upscaleConfig: UpscaleConfig;
   brushStrokes: BrushStroke[];
+  wandStrokes: WandStroke[];
   previewSize: number;
 }
 
@@ -37,6 +38,7 @@ export interface ExportIcoItemRequest {
   renderConfig: RenderConfig;
   upscaleConfig: UpscaleConfig;
   brushStrokes: BrushStroke[];
+  wandStrokes: WandStroke[];
 }
 
 export interface ExportIcoRequest {
@@ -65,6 +67,7 @@ export interface ApplyToLnkItemRequest {
   renderConfig: RenderConfig;
   upscaleConfig: UpscaleConfig;
   brushStrokes: BrushStroke[];
+  wandStrokes: WandStroke[];
 }
 
 export interface ApplyToLnkRequest {

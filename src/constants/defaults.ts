@@ -1,5 +1,23 @@
-import { IconShape, BackplateType, ForegroundFit } from "../types/domain";
-import type { RenderConfig, UpscaleConfig } from "../types/domain";
+import { IconShape, BackplateType, ForegroundFit, HqPanelShape } from "../types/domain";
+import type { HqRenderConfig, RenderConfig, UpscaleConfig } from "../types/domain";
+
+export const DEFAULT_HQ_RENDER_CONFIG: Readonly<HqRenderConfig> = {
+  enabled: false,
+  thresh: 0.5,
+  iconRatio: 0.66,
+  bg: 0.1,
+  lightMix: 0.9,
+  darkMix: 0.72,
+  gloss: 0.16,
+  iconLight: 0.08,
+  corner: 0.22,
+  shape: HqPanelShape.Rect,
+  shadowOpacity: 0.22,
+  shadowBlurFactor: 0.022,
+  shadowOffsetFactor: 0.012,
+  shadowFade: 0.25,
+  shadowMode: "icon",
+};
 
 export const DEFAULT_RENDER_CONFIG: Readonly<RenderConfig> = {
   foregroundScalePercent: 100,
@@ -40,6 +58,7 @@ export const DEFAULT_RENDER_CONFIG: Readonly<RenderConfig> = {
     tolerance: 20,
     feather: 8,
   },
+  hqRender: { ...DEFAULT_HQ_RENDER_CONFIG },
 };
 
 export const DEFAULT_UPSCALE_CONFIG: Readonly<UpscaleConfig> = {

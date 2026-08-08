@@ -37,6 +37,38 @@ pub fn parse_hex_rgba(value: &str) -> Result<LinearRgba, AppError> {
     })
 }
 
+/// Parse an RRGGBBAA hex color into straight sRGB components in 0..=1.
+/// Used by the adaptive renderer, which composites in sRGB space like the
+/// reference iconmask.py implementation.
+pub fn parse_hex_srgb_rgba(value: &str) -> Result<[f32; 4], AppError> {
+    let hex = value
+        .strip_prefix('#')
+        .ok_or_else(|| AppError::InvalidArgument(format!("color must start with #: {}", value)))?;
+
+    if hex.len() != 8 {
+        return Err(AppError::InvalidArgument(format!(
+            "color must be 8 hex digits (RRGGBBAA): {}",
+            value
+        )));
+    }
+
+    let r = u8::from_str_radix(&hex[0..2], 16)
+        .map_err(|_| AppError::InvalidArgument(format!("invalid hex color: {}", value)))?;
+    let g = u8::from_str_radix(&hex[2..4], 16)
+        .map_err(|_| AppError::InvalidArgument(format!("invalid hex color: {}", value)))?;
+    let b = u8::from_str_radix(&hex[4..6], 16)
+        .map_err(|_| AppError::InvalidArgument(format!("invalid hex color: {}", value)))?;
+    let a = u8::from_str_radix(&hex[6..8], 16)
+        .map_err(|_| AppError::InvalidArgument(format!("invalid hex color: {}", value)))?;
+
+    Ok([
+        r as f32 / 255.0,
+        g as f32 / 255.0,
+        b as f32 / 255.0,
+        a as f32 / 255.0,
+    ])
+}
+
 pub fn srgb_channel_to_linear(value: f32) -> f32 {
     if value <= 0.04045 {
         value / 12.92

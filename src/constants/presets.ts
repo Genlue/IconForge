@@ -1,5 +1,10 @@
 import { IconShape, BackplateType, ForegroundFit } from "../types/domain";
-import type { PresetDefinition } from "../types/domain";
+import type { HqRenderConfig, PresetDefinition } from "../types/domain";
+import { DEFAULT_HQ_RENDER_CONFIG, DEFAULT_RENDER_CONFIG } from "./defaults";
+
+function hqConfig(patch: Partial<HqRenderConfig>): HqRenderConfig {
+  return { ...DEFAULT_HQ_RENDER_CONFIG, ...patch };
+}
 
 const MACOS_CLASSIC_ROUNDED: PresetDefinition = {
   id: "macos-classic-rounded",
@@ -34,6 +39,27 @@ const MACOS_CLASSIC_ROUNDED: PresetDefinition = {
     },
     gloss: { enabled: false, width: 3, strength: 0.7, lightColor: "#FFFFFFFF", darkColor: "#00000080" },
     autoCutout: { enabled: false, tolerance: 20, feather: 8 },
+    hqRender: hqConfig({}),
+  },
+};
+
+const HQ_RENDER_LIGHT: PresetDefinition = {
+  id: "hq-render-light",
+  name: "高质量渲染 (浅色)",
+  description: "自适应浅色面板：径向光晕、顶部光泽与柔和阴影，阈值 0.5",
+  config: {
+    ...DEFAULT_RENDER_CONFIG,
+    hqRender: hqConfig({ enabled: true, thresh: 0.5, bg: 0.22, iconRatio: 0.66 }),
+  },
+};
+
+const HQ_RENDER_DARK: PresetDefinition = {
+  id: "hq-render-dark",
+  name: "高质量渲染 (深色)",
+  description: "自适应深色面板：径向光晕、顶部光泽与柔和阴影，阈值 0.9",
+  config: {
+    ...DEFAULT_RENDER_CONFIG,
+    hqRender: hqConfig({ enabled: true, thresh: 0.9, bg: 0.1, iconRatio: 0.66 }),
   },
 };
 
@@ -70,6 +96,7 @@ const IOS_SQUIRCLE: PresetDefinition = {
     },
     gloss: { enabled: true, width: 3, strength: 0.55, lightColor: "#FFFFFFB0", darkColor: "#17206070" },
     autoCutout: { enabled: false, tolerance: 20, feather: 8 },
+    hqRender: hqConfig({}),
   },
 };
 
@@ -106,6 +133,7 @@ const MINIMAL_GLYPH: PresetDefinition = {
     },
     gloss: { enabled: false, width: 3, strength: 0.7, lightColor: "#FFFFFFFF", darkColor: "#00000080" },
     autoCutout: { enabled: false, tolerance: 20, feather: 8 },
+    hqRender: hqConfig({}),
   },
 };
 
@@ -156,6 +184,8 @@ const NEON_DEPTH: PresetDefinition = {
 };
 
 export const BUILT_IN_PRESETS: readonly PresetDefinition[] = Object.freeze([
+  Object.freeze(HQ_RENDER_LIGHT),
+  Object.freeze(HQ_RENDER_DARK),
   Object.freeze(MACOS_CLASSIC_ROUNDED),
   Object.freeze(MACOS_GLOSS_LIGHT),
   Object.freeze(MACOS_GLOSS_DARK),

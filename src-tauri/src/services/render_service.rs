@@ -4,7 +4,7 @@ use tauri::AppHandle;
 use crate::domain::request::RenderPreviewRequest;
 use crate::domain::response::RenderPreviewResponse;
 use crate::error::app_error::AppError;
-use crate::renderer::{composite_brush_strokes, render_master, validate_config};
+use crate::renderer::{composite_brush_strokes, render_master_with_wands, validate_config};
 use crate::state::AppState;
 
 pub fn render_preview(
@@ -28,8 +28,10 @@ pub fn render_preview(
         state,
     )?;
 
-    let master =
-        composite_brush_strokes(render_master(&source, &validated)?, &request.brush_strokes)?;
+    let master = composite_brush_strokes(
+        render_master_with_wands(&source, &validated, &request.wand_strokes)?,
+        &request.brush_strokes,
+    )?;
 
     // Resize to preview size
     let preview = if request.preview_size == 256 {

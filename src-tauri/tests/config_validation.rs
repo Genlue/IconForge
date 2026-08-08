@@ -38,10 +38,27 @@ mod tests {
                 light_color: "#FFFFFFFF".into(),
                 dark_color: "#00000080".into(),
             },
-            auto_cutout: AutoCutoutConfig {
+auto_cutout: AutoCutoutConfig {
                 enabled: false,
                 tolerance: 20.0,
                 feather: 8.0,
+            },
+            hq_render: HqRenderConfig {
+                enabled: false,
+                thresh: 0.5,
+                icon_ratio: 0.66,
+                bg: 0.22,
+                light_mix: 0.9,
+                dark_mix: 0.72,
+                gloss: 0.16,
+                icon_light: 0.08,
+                corner: 0.22,
+                shape: HqPanelShape::Rect,
+                shadow_opacity: 0.22,
+                shadow_blur_factor: 0.022,
+                shadow_offset_factor: 0.012,
+                shadow_fade: 0.25,
+                shadow_mode: HqShadowMode::Icon,
             },
         }
     }

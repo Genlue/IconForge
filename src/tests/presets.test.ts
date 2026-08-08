@@ -48,4 +48,33 @@ describe("presets", () => {
   it("should return undefined for unknown id", () => {
     expect(getPresetById("nonexistent")).toBeUndefined();
   });
+
+  it.each([
+    ["hq-render-light", 0.5, 0.22],
+    ["hq-render-dark", 0.9, 0.1],
+  ])("hq preset %s uses the reference parameters", (id, thresh, bg) => {
+    const preset = getPresetById(id);
+    expect(preset).toBeDefined();
+    expect(preset?.config.hqRender.enabled).toBe(true);
+    expect(preset?.config.hqRender.thresh).toBe(thresh);
+    expect(preset?.config.hqRender.bg).toBe(bg);
+    expect(preset?.config.hqRender.iconRatio).toBe(0.66);
+    expect(preset?.config.hqRender.lightMix).toBe(0.9);
+    expect(preset?.config.hqRender.darkMix).toBe(0.72);
+    expect(preset?.config.hqRender.gloss).toBe(0.16);
+    expect(preset?.config.hqRender.iconLight).toBe(0.08);
+    expect(preset?.config.hqRender.corner).toBe(0.22);
+    expect(preset?.config.hqRender.shadowOpacity).toBe(0.22);
+    expect(preset?.config.hqRender.shadowBlurFactor).toBe(0.022);
+    expect(preset?.config.hqRender.shadowOffsetFactor).toBe(0.012);
+    expect(preset?.config.hqRender.shadowFade).toBe(0.25);
+    expect(preset?.config.hqRender.shadowMode).toBe("icon");
+  });
+
+  it("non-hq presets keep hq rendering disabled", () => {
+    for (const preset of BUILT_IN_PRESETS) {
+      if (preset.id.startsWith("hq-render-")) continue;
+      expect(preset.config.hqRender.enabled).toBe(false);
+    }
+  });
 });

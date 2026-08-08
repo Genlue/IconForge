@@ -1,10 +1,11 @@
 use image::RgbaImage;
 
-use crate::domain::config::{BackplateType, BrushStroke, ForegroundFit, IconShape, RenderConfig};
+use crate::domain::config::{BackplateType, BrushStroke, ForegroundFit, IconShape, RenderConfig, WandStroke};
 use crate::error::app_error::AppError;
 
 use super::color::{parse_hex_rgba, LinearRgba};
 use super::composite::{over, LinearPremultipliedImage};
+use super::hq::{validate_hq, ValidatedHqRenderConfig};
 use super::mask::generate_shape_mask;
 use super::resize::resize_from_master;
 use super::shadow::render_shadow;
@@ -43,6 +44,7 @@ pub struct ValidatedRenderConfig {
     pub auto_cutout_enabled: bool,
     pub auto_cutout_tolerance: f32,
     pub auto_cutout_feather: f32,
+    pub hq: Option<ValidatedHqRenderConfig>,
 }
 
 pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, AppError> {
@@ -169,6 +171,12 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
         ));
     }
 
+    let hq = if config.hq_render.enabled {
+        Some(validate_hq(config)?)
+    } else {
+        None
+    };
+
     Ok(ValidatedRenderConfig {
         shape: config.shape,
         foreground_scale_percent: config.foreground_scale_percent,
@@ -200,6 +208,7 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
         auto_cutout_enabled: config.auto_cutout.enabled,
         auto_cutout_tolerance: config.auto_cutout.tolerance,
         auto_cutout_feather: config.auto_cutout.feather,
+        hq,
     })
 }
 
@@ -207,6 +216,26 @@ pub fn render_master(
     source: &RgbaImage,
     config: &ValidatedRenderConfig,
 ) -> Result<RgbaImage, AppError> {
+    // Auto cutout applies to the original source for both the classic and the
+    // adaptive high-quality pipelines.
+    let cutout_buffer;
+    let prepared = if config.auto_cutout_enabled {
+        cutout_buffer = super::cutout::remove_border_background(
+            source,
+            config.auto_cutout_tolerance,
+            config.auto_cutout_feather,
+        );
+        &cutout_buffer
+    } else {
+        source
+    };
+
+    // Adaptive high-quality renderer (port of iconmask.py) replaces the
+    // classic layer stack entirely when enabled.
+    if let Some(hq) = &config.hq {
+        return super::hq::render_hq(prepared, hq);
+    }
+
     let size = 256;
     let mask = generate_shape_mask(size, config);
     let mut body = LinearPremultipliedImage::transparent(size, size);
@@ -218,18 +247,7 @@ pub fn render_master(
     }
 
     // Foreground
-    let cutout_source;
-    let foreground_source = if config.auto_cutout_enabled {
-        cutout_source = super::cutout::remove_border_background(
-            source,
-            config.auto_cutout_tolerance,
-            config.auto_cutout_feather,
-        );
-        &cutout_source
-    } else {
-        source
-    };
-    let foreground = render_foreground(foreground_source, config, &mask);
+    let foreground = render_foreground(prepared, config, &mask);
     over(&mut body, foreground);
 
     // Stroke
@@ -344,13 +362,31 @@ pub fn render_icon_set(
     Ok(results)
 }
 
+/// Render a master with magic-wand erasures applied to the original source
+/// before the (classic or HQ) pipeline stages run.
+pub fn render_master_with_wands(
+    source: &RgbaImage,
+    config: &ValidatedRenderConfig,
+    wand_strokes: &[WandStroke],
+) -> Result<RgbaImage, AppError> {
+    if wand_strokes.is_empty() {
+        return render_master(source, config);
+    }
+    let mut edited = source.clone();
+    super::wand::apply_erasures(&mut edited, wand_strokes);
+    render_master(&edited, config)
+}
+
 pub fn render_icon_set_with_brushes(
     source: &RgbaImage,
     config: &ValidatedRenderConfig,
     brush_strokes: &[BrushStroke],
+    wand_strokes: &[WandStroke],
 ) -> Result<Vec<(u32, RgbaImage)>, AppError> {
-    let master =
-        super::brush::composite_brush_strokes(render_master(source, config)?, brush_strokes)?;
+    let master = super::brush::composite_brush_strokes(
+        render_master_with_wands(source, config, wand_strokes)?,
+        brush_strokes,
+    )?;
     let mut results = Vec::with_capacity(super::ICO_SIZES.len());
     for &size in &super::ICO_SIZES {
         if size == 256 {

@@ -15,6 +15,7 @@ export function PreviewPane(): JSX.Element {
   );
   const previewTool = useIconForgeStore((s) => s.previewTool);
   const addBrushStroke = useIconForgeStore((s) => s.addBrushStroke);
+  const addWandStroke = useIconForgeStore((s) => s.addWandStroke);
   const applyPickedColor = useIconForgeStore((s) => s.applyPickedColor);
   const dragActive = useIconForgeStore((s) => s.dragActive);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -25,11 +26,13 @@ export function PreviewPane(): JSX.Element {
   const renderConfig = itemConfig?.renderConfig ?? DEFAULT_RENDER_CONFIG;
   const upscaleConfig = itemConfig?.upscaleConfig ?? DEFAULT_UPSCALE_CONFIG;
   const brushStrokes = itemConfig?.brushStrokes ?? [];
+  const wandStrokes = itemConfig?.wandStrokes ?? [];
   const preview = useDebouncedPreview(
     selectedItem?.sourcePath ?? null,
     renderConfig,
     upscaleConfig,
     brushStrokes,
+    wandStrokes,
     420,
   );
 
@@ -65,6 +68,14 @@ export function PreviewPane(): JSX.Element {
       const y = Math.max(0, Math.min(419, Math.floor(((event.clientY - rect.top) / rect.height) * 420)));
       const pixel = context.getImageData(x, y, 1, 1).data;
       applyPickedColor(`#${toHex(pixel[0] ?? 0)}${toHex(pixel[1] ?? 0)}${toHex(pixel[2] ?? 0)}`);
+      return;
+    }
+    if (previewTool === "magic-wand") {
+      if (!itemConfig) return;
+      addWandStroke({
+        points: [point],
+        tolerance: itemConfig.wandTolerance,
+      });
       return;
     }
     if (previewTool !== "brush" && previewTool !== "eraser") return;
@@ -116,6 +127,8 @@ export function PreviewPane(): JSX.Element {
       ? "crosshair"
       : previewTool === "eraser"
         ? "cell"
+        : previewTool === "magic-wand"
+          ? "crosshair"
       : "default";
 
   return (
@@ -165,6 +178,7 @@ export function PreviewPane(): JSX.Element {
           {previewTool === "eyedropper" && <span className="text-[var(--accent)]">点击预览取色</span>}
           {previewTool === "brush" && <span className="text-[var(--accent)]">在预览上拖动绘制</span>}
           {previewTool === "eraser" && <span className="text-[var(--accent)]">在预览上拖动擦除</span>}
+          {previewTool === "magic-wand" && <span className="text-[var(--accent)]">点击删除相似颜色区域</span>}
         </div>
       )}
     </div>

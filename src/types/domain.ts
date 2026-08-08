@@ -11,6 +11,14 @@ export enum IconShape {
   Squircle = "Squircle",
 }
 
+export enum HqPanelShape {
+  Rect = "Rect",
+  Squircle = "Squircle",
+  Circle = "Circle",
+}
+
+export type HqShadowMode = "icon" | "badge";
+
 export enum BackplateType {
   None = "None",
   Solid = "Solid",
@@ -56,6 +64,24 @@ export interface AutoCutoutConfig {
   feather: number;
 }
 
+export interface HqRenderConfig {
+  enabled: boolean;
+  thresh: number;
+  iconRatio: number;
+  bg: number;
+  lightMix: number;
+  darkMix: number;
+  gloss: number;
+  iconLight: number;
+  corner: number;
+  shape: HqPanelShape;
+  shadowOpacity: number;
+  shadowBlurFactor: number;
+  shadowOffsetFactor: number;
+  shadowFade: number;
+  shadowMode: HqShadowMode;
+}
+
 export interface RenderConfig {
   foregroundScalePercent: number;
   foregroundFit: ForegroundFit;
@@ -75,6 +101,7 @@ export interface RenderConfig {
   stroke: StrokeConfig;
   gloss: GlossConfig;
   autoCutout: AutoCutoutConfig;
+  hqRender: HqRenderConfig;
 }
 
 export interface InputItem {
@@ -103,6 +130,11 @@ export interface BrushPoint {
   y: number;
 }
 
+export interface WandStroke {
+  points: BrushPoint[];
+  tolerance: number;
+}
+
 export interface BrushStroke {
   points: BrushPoint[];
   color: string;
@@ -124,7 +156,7 @@ export type ColorPickTarget =
   | "glossLight"
   | "glossDark";
 
-export type PreviewTool = "none" | "brush" | "eraser" | "eyedropper";
+export type PreviewTool = "none" | "brush" | "eraser" | "eyedropper" | "magic-wand";
 
 export interface ItemConfig {
   renderConfig: RenderConfig;
@@ -134,6 +166,8 @@ export interface ItemConfig {
   brushSize: number;
   brushMode: BrushMode;
   brushClipToMask: boolean;
+  wandStrokes: WandStroke[];
+  wandTolerance: number;
   activePresetId: string | null;
 }
 
