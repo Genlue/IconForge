@@ -56,7 +56,7 @@ export const DEFAULT_RENDER_CONFIG: Readonly<RenderConfig> = {
     width: 3,
     strength: 0.7,
     lightColor: "#FFFFFFFF",
-    darkColor: "#00000080",
+    baseColor: "#808080FF",
     featherBlur: 0,
   },
   autoCutout: {

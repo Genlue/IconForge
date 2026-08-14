@@ -55,7 +55,7 @@ export interface GlossConfig {
   width: number;
   strength: number;
   lightColor: string;
-  darkColor: string;
+  baseColor: string;
   featherBlur: number;
 }
 
@@ -173,7 +173,7 @@ export type ColorPickTarget =
   | "shadow"
   | "stroke"
   | "glossLight"
-  | "glossDark";
+  | "glossBase";
 
 export type PreviewTool = "none" | "brush" | "eraser" | "eyedropper" | "magic-wand" | "source-eraser";
 

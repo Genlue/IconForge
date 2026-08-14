@@ -34,7 +34,24 @@ function loadCustomPresets(): PresetDefinition[] {
     const raw = window.localStorage.getItem(CUSTOM_PRESETS_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    // Migrate presets saved before the gloss base color replaced the dark edge:
+    // drop the obsolete darkColor and default the new baseColor to gray.
+    return parsed.map((preset) => {
+      const gloss = preset?.config?.gloss;
+      if (!gloss || typeof gloss !== "object") return preset;
+      const next = { ...gloss };
+      if (next.baseColor === undefined || next.baseColor === null) {
+        next.baseColor = DEFAULT_RENDER_CONFIG.gloss.baseColor;
+      }
+      if ("darkColor" in next) {
+        delete next.darkColor;
+      }
+      return {
+        ...preset,
+        config: { ...preset.config, gloss: next },
+      };
+    });
   } catch {
     return [];
   }
@@ -292,8 +309,8 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
           activePresetId: null,
         };
       }
-      if (target === "glossLight" || target === "glossDark") {
-        const key = target === "glossLight" ? "lightColor" : "darkColor";
+      if (target === "glossLight" || target === "glossBase") {
+        const key = target === "glossLight" ? "lightColor" : "baseColor";
         return {
           ...config,
           renderConfig: {

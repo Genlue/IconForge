@@ -47,8 +47,8 @@ describe("presets", () => {
         enabled: true,
         width: 2,
         strength: 1,
-        lightColor: "#FFFFFFCC",
-        darkColor: "#BFBFBFCC",
+        lightColor: "#C8C8C8CC",
+        baseColor: "#454545FF",
         featherBlur: 0,
       });
     },

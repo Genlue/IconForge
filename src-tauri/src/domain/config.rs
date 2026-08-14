@@ -58,13 +58,13 @@ pub struct StrokeConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(rename_all = "camelCase")]
 pub struct GlossConfig {
     pub enabled: bool,
     pub width: f32,
     pub strength: f32,
     pub light_color: String,
-    pub dark_color: String,
+    pub base_color: String,
     pub feather_blur: f32,
 }
 

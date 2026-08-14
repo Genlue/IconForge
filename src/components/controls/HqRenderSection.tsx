@@ -254,21 +254,21 @@ export function HqRenderSection(props: HqRenderSectionProps): JSX.Element {
               </p>
               <ColorField
                 id="hq-edge-gloss-light"
-                label="左上高光"
+                label="高光"
                 value={gloss.lightColor}
                 pickTarget="glossLight"
                 onChange={(lightColor) => onGlossChange({ lightColor })}
               />
               <ColorField
-                id="hq-edge-gloss-dark"
-                label="右下暗边"
-                value={gloss.darkColor}
-                pickTarget="glossDark"
-                onChange={(darkColor) => onGlossChange({ darkColor })}
+                id="hq-edge-gloss-base"
+                label="边缘基底色"
+                value={gloss.baseColor}
+                pickTarget="glossBase"
+                onChange={(baseColor) => onGlossChange({ baseColor })}
               />
             </div>
             <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
-              方向性内倒角：左上高光、右下暗边，叠加在自适应面板之上。
+              沿边缘的一圈基底色，其上叠加方向性高光：左上高光沿左、上边缘，右下角同色高光并向末端渐隐。
             </p>
           </div>
         </div>

@@ -32,7 +32,7 @@ pub struct ValidatedHqRenderConfig {
     pub edge_gloss_width: f32,
     pub edge_gloss_strength: f32,
     pub edge_gloss_light: [f32; 4],
-    pub edge_gloss_dark: [f32; 4],
+    pub edge_gloss_base: [f32; 4],
     pub edge_gloss_feather_blur: f32,
 }
 
@@ -79,7 +79,7 @@ pub fn validate_hq(config: &RenderConfig) -> Result<ValidatedHqRenderConfig, App
         edge_gloss_width: check(config.gloss.width, 0.0, 32.0, "gloss width")?,
         edge_gloss_strength: check(config.gloss.strength, 0.0, 1.0, "gloss strength")?,
         edge_gloss_light: super::color::parse_hex_srgb_rgba(&config.gloss.light_color)?,
-        edge_gloss_dark: super::color::parse_hex_srgb_rgba(&config.gloss.dark_color)?,
+        edge_gloss_base: super::color::parse_hex_srgb_rgba(&config.gloss.base_color)?,
         edge_gloss_feather_blur: check(config.gloss.feather_blur, 0.0, 32.0, "gloss featherBlur")?,
     })
 }
@@ -584,8 +584,48 @@ fn gloss_layer(size: usize, strength: f32) -> Vec<[f32; 4]> {
     out
 }
 
-/// Classic directional edge gloss (top-left light, bottom-right dark) rendered
-/// in straight sRGB so it can be composited onto the adaptive tile.
+/// Angular spans (radians, y-down screen coordinates where the angle grows
+/// clockwise) of the two highlight regions of the HQ panel, measured from the
+/// panel center: `(a1, a2, b1, b2)`, plus the shared opacity profile.
+///
+/// Top-left highlight spans clockwise from the upper end of the bottom-left
+/// rounding along the left/top edges to the left end of the top-right rounding
+/// (region A, sweep `a1 -> a2`); the bottom-right highlight covers the
+/// bottom-right rounding from its left side (bottom edge end) to its upper
+/// side (right edge end), region B = angle interval `[b2, b1]`.
+fn gloss_region_angles(size: usize, shape: HqPanelShape, corner: f32) -> ((f32, f32, f32, f32), super::gloss::GlossProfile) {
+    let no_edges = super::gloss::GlossProfile { k1: 0.0, k2: 1.0 };
+    match shape {
+        HqPanelShape::Circle | HqPanelShape::Squircle => (
+            (std::f32::consts::PI, -std::f32::consts::PI / 2.0, std::f32::consts::PI / 2.0, 0.0),
+            no_edges,
+        ),
+        HqPanelShape::Rect => {
+            let c = (size as f32 - 1.0) / 2.0;
+            let rad = corner * size as f32;
+            let x0 = rad;
+            let x1 = size as f32 - rad;
+            let y0 = rad;
+            let y1 = size as f32 - rad;
+            let a1 = (y1 - rad - c).atan2(x0 - c);
+            let a2 = (y0 - c).atan2(x1 - rad - c);
+            let b1 = (y1 - c).atan2(x1 - rad - c);
+            let b2 = (y1 - rad - c).atan2(x1 - c);
+            let span_a = (a2 - a1).rem_euclid(std::f32::consts::TAU);
+            let k1 = ((y0 + rad - c).atan2(x0 - c) - a1).rem_euclid(std::f32::consts::TAU) / span_a;
+            let k2 = ((y0 - c).atan2(x0 + rad - c) - a1).rem_euclid(std::f32::consts::TAU) / span_a;
+            ((a1, a2, b1, b2), super::gloss::GlossProfile { k1, k2 })
+        }
+    }
+}
+
+/// Edge gloss: a base-colored ring along the whole panel edge, with a light
+/// highlight overlaid on top of it along the left/top edges (region A) and on
+/// the bottom-right corner arc (region B). The highlight peaks at the corner
+/// arcs, sits slightly lower along the straight edges, and fades to
+/// transparent at the ends of both regions so the edge base color shows
+/// through with a gradual transition. Rendered in straight sRGB so it can be
+/// composited onto the adaptive tile.
 fn render_edge_gloss(mask: &[f32], size: usize, cfg: &ValidatedHqRenderConfig) -> Vec<[f32; 4]> {
     let mut out = vec![[0.0f32; 4]; size * size];
     if !cfg.edge_gloss_enabled || cfg.edge_gloss_width <= 0.0 || cfg.edge_gloss_strength <= 0.0 {
@@ -597,6 +637,14 @@ fn render_edge_gloss(mask: &[f32], size: usize, cfg: &ValidatedHqRenderConfig) -
     } else {
         base_inset
     };
+    let light = cfg.edge_gloss_light;
+    let base = cfg.edge_gloss_base;
+    let ((a1, a2, b1, b2), profile) = gloss_region_angles(size, cfg.shape, cfg.corner);
+    let span_a = (a2 - a1).rem_euclid(std::f32::consts::TAU);
+    let span_b = b1 - b2;
+    let c = (size as f32 - 1.0) / 2.0;
+
+    let mut highlight = vec![[0.0f32; 4]; size * size];
     for y in 0..size {
         for x in 0..size {
             let idx = y * size + x;
@@ -604,21 +652,30 @@ fn render_edge_gloss(mask: &[f32], size: usize, cfg: &ValidatedHqRenderConfig) -
             if edge <= 0.0 {
                 continue;
             }
-            let nx = x as f32 / (size - 1) as f32 * 2.0 - 1.0;
-            let ny = y as f32 / (size - 1) as f32 * 2.0 - 1.0;
-            let direction = ((-nx - ny) * 0.5).clamp(-1.0, 1.0);
-            let (color, weight) = if direction >= 0.0 {
-                (&cfg.edge_gloss_light, direction)
+            let a = (base[3] * edge * cfg.edge_gloss_strength).clamp(0.0, 1.0);
+            if a > 0.0 {
+                out[idx] = [base[0], base[1], base[2], a];
+            }
+
+            let px = x as f32 + 0.5;
+            let py = y as f32 + 0.5;
+            let theta = (py - c).atan2(px - c);
+            let phi = (theta - a1).rem_euclid(std::f32::consts::TAU);
+            let weight = if phi <= span_a {
+                super::gloss::region_a_weight(phi, span_a, &profile)
+            } else if span_b > 0.0 && theta >= b2 && theta <= b1 {
+                super::gloss::bottom_right_weight((b1 - theta) / span_b)
             } else {
-                (&cfg.edge_gloss_dark, -direction)
+                continue;
             };
-            let alpha = (color[3] * edge * weight * cfg.edge_gloss_strength).clamp(0.0, 1.0);
+            let alpha = (light[3] * edge * weight * cfg.edge_gloss_strength).clamp(0.0, 1.0);
             if alpha <= 0.0 {
                 continue;
             }
-            out[idx] = [color[0] * alpha, color[1] * alpha, color[2] * alpha, alpha];
+            highlight[idx] = [light[0], light[1], light[2], alpha];
         }
     }
+    over(&mut out, &highlight);
     out
 }
 
@@ -790,7 +847,7 @@ mod tests {
             edge_gloss_width: 2.0,
             edge_gloss_strength: 0.6,
             edge_gloss_light: [1.0, 1.0, 1.0, 0.7],
-            edge_gloss_dark: [0.0, 0.0, 0.0, 0.5],
+            edge_gloss_base: [0.0, 0.0, 0.0, 0.5],
             edge_gloss_feather_blur: 0.0,
         }
     }

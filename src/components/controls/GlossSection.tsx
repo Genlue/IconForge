@@ -23,10 +23,12 @@ export function GlossSection(props: {
         <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
           羽化值使光泽向内平滑衰减，加强光泽与图标主体的过渡。
         </p>
-        <ColorField id="gloss-light" label="左上高光" value={value.lightColor} pickTarget="glossLight" onChange={(lightColor) => onChange({ lightColor })} />
-        <ColorField id="gloss-dark" label="右下暗边" value={value.darkColor} pickTarget="glossDark" onChange={(darkColor) => onChange({ darkColor })} />
+        <ColorField id="gloss-light" label="高光" value={value.lightColor} pickTarget="glossLight" onChange={(lightColor) => onChange({ lightColor })} />
+        <ColorField id="gloss-base" label="边缘基底色" value={value.baseColor} pickTarget="glossBase" onChange={(baseColor) => onChange({ baseColor })} />
       </div>
-      <p className="text-[11px] leading-4 text-[var(--text-secondary)]">模拟 macOS 图标的方向性内倒角：左上高光、右下暗边。</p>
+      <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
+        沿边缘的一圈基底色，其上叠加方向性高光：左上高光沿左、上边缘，右下角同色高光并向末端渐隐。
+      </p>
     </section>
   );
 }

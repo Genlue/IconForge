@@ -43,7 +43,7 @@ pub struct ValidatedRenderConfig {
     pub gloss_width: f32,
     pub gloss_strength: f32,
     pub gloss_light_color: String,
-    pub gloss_dark_color: String,
+    pub gloss_base_color: String,
     pub gloss_feather_blur: f32,
     pub auto_cutout_enabled: bool,
     pub auto_cutout_tolerance: f32,
@@ -67,7 +67,7 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
     let _shadow_color = parse_hex_rgba(&config.outer_shadow.color)?;
     let _stroke_color = parse_hex_rgba(&config.stroke.color)?;
     let _gloss_light = parse_hex_rgba(&config.gloss.light_color)?;
-    let _gloss_dark = parse_hex_rgba(&config.gloss.dark_color)?;
+    let _gloss_base = parse_hex_rgba(&config.gloss.base_color)?;
 
     if !config.foreground_offset_x.is_finite()
         || !(-128.0..=128.0).contains(&config.foreground_offset_x)
@@ -223,7 +223,7 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
         gloss_width: config.gloss.width,
         gloss_strength: config.gloss.strength,
         gloss_light_color: config.gloss.light_color.clone(),
-        gloss_dark_color: config.gloss.dark_color.clone(),
+        gloss_base_color: config.gloss.base_color.clone(),
         gloss_feather_blur: config.gloss.feather_blur,
         auto_cutout_enabled: config.auto_cutout.enabled,
         auto_cutout_tolerance: config.auto_cutout.tolerance,

@@ -46,7 +46,7 @@ mod tests {
                 width: 3.0,
                 strength: 0.7,
                 light_color: "#FFFFFFFF".into(),
-                dark_color: "#00000080".into(),
+                base_color: "#808080FF".into(),
                 feather_blur: 0.0,
             },
             auto_cutout: AutoCutoutConfig {
