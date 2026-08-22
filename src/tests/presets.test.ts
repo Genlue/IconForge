@@ -8,6 +8,7 @@ describe("presets", () => {
       BUILT_IN_PRESETS.map((p) => p.id),
     ).toEqual([
       "hq-render",
+      "glass",
       "macos-classic-rounded",
       "macos-gloss-dark",
       "ios-squircle",

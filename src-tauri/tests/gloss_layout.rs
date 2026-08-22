@@ -11,6 +11,7 @@ mod tests {
             foreground_offset_x: 0.0,
             foreground_offset_y: 0.0,
             foreground_rotation_degrees: 0.0,
+            foreground_opacity_percent: 100.0,
             canvas_inset: 16.0,
             content_scale_percent: 100.0,
             shape: IconShape::RoundedRectangle,
@@ -66,6 +67,16 @@ mod tests {
                 shadow_offset_factor: 0.012,
                 shadow_fade: 0.25,
                 shadow_mode: HqShadowMode::Icon,
+            },
+            glass_render: GlassRenderConfig {
+                enabled: false,
+                color_retention: 0.05,
+                bevel_radius: 0.12,
+                normal_strength: 1.0,
+                specular_strength: 0.25,
+                fresnel_strength: 0.5,
+                ao_strength: 0.35,
+                contrast_strength: 0.0,
             },
         }
     }

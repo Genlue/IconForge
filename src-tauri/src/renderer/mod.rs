@@ -3,6 +3,7 @@ pub mod color;
 pub mod composite;
 pub mod cutout;
 pub mod eraser;
+pub mod glass;
 pub mod gloss;
 pub mod hq;
 pub mod mask;

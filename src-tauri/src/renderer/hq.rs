@@ -712,7 +712,7 @@ fn erode_mask(mask: &[f32], size: usize, radius: usize) -> Vec<f32> {
     out
 }
 
-fn gaussian_blur(mask: &[f32], width: usize, height: usize, sigma: f32) -> Vec<f32> {
+pub(crate) fn gaussian_blur(mask: &[f32], width: usize, height: usize, sigma: f32) -> Vec<f32> {
     if sigma <= 0.0 {
         return mask.to_vec();
     }
@@ -759,7 +759,7 @@ fn gaussian_blur(mask: &[f32], width: usize, height: usize, sigma: f32) -> Vec<f
     result
 }
 
-fn cast_shadow(
+pub(crate) fn cast_shadow(
     src_alpha: &[f32],
     size: usize,
     offset: i32,

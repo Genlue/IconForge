@@ -31,8 +31,18 @@ export function ForegroundSection(props: ForegroundSectionProps): JSX.Element {
         unit="%"
         onChange={(v) => onChange({ foregroundScalePercent: v })}
       />
+      <RangeField
+        id="fg-opacity"
+        label="源图透明度"
+        value={config.foregroundOpacityPercent}
+        min={0}
+        max={100}
+        step={1}
+        unit="%"
+        onChange={(v) => onChange({ foregroundOpacityPercent: v })}
+      />
       <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
-        以源图的非透明有效内容为基准；“填满”会铺满形状并裁切，超过 100% 可继续放大。
+        以源图的非透明有效内容为基准；“填满”会铺满形状并裁切，超过 100% 可继续放大。透明度降低时前景整体淡出，露出底板。
       </p>
       <RangeField
         id="fg-offset-x"

@@ -100,6 +100,26 @@ pub struct HqRenderConfig {
     pub shadow_mode: HqShadowMode,
 }
 
+const fn default_foreground_opacity() -> f32 {
+    100.0
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GlassRenderConfig {
+    pub enabled: bool,
+    pub color_retention: f32,
+    pub bevel_radius: f32,
+    pub normal_strength: f32,
+    pub specular_strength: f32,
+    pub fresnel_strength: f32,
+    pub ao_strength: f32,
+    /// Contrast boost applied to the source image before glass shading.
+    /// 0 = unchanged, 1 = doubled contrast.
+    #[serde(default)]
+    pub contrast_strength: f32,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct RenderConfig {
@@ -108,6 +128,9 @@ pub struct RenderConfig {
     pub foreground_offset_x: f32,
     pub foreground_offset_y: f32,
     pub foreground_rotation_degrees: f32,
+    /// Foreground (source image) opacity in percent. 100 = fully opaque.
+    #[serde(default = "default_foreground_opacity")]
+    pub foreground_opacity_percent: f32,
     pub canvas_inset: f32,
     pub content_scale_percent: f32,
     pub shape: IconShape,
@@ -123,6 +146,8 @@ pub struct RenderConfig {
     pub gloss: GlossConfig,
     pub auto_cutout: AutoCutoutConfig,
     pub hq_render: HqRenderConfig,
+    #[serde(default)]
+    pub glass_render: GlassRenderConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

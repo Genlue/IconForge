@@ -640,6 +640,7 @@ function cloneRenderConfig(config: RenderConfig): RenderConfig {
     gloss: { ...config.gloss },
     autoCutout: { ...config.autoCutout },
     hqRender: { ...config.hqRender },
+    glassRender: { ...config.glassRender },
   };
 }
 

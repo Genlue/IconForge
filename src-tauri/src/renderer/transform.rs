@@ -84,6 +84,17 @@ pub fn render_foreground(
         }
     }
 
+    // Source image opacity: applied in premultiplied space so the whole
+    // foreground fades uniformly toward the backplate.
+    if config.foreground_opacity < 1.0 {
+        for p in result.data.iter_mut() {
+            p[0] *= config.foreground_opacity;
+            p[1] *= config.foreground_opacity;
+            p[2] *= config.foreground_opacity;
+            p[3] *= config.foreground_opacity;
+        }
+    }
+
     result
 }
 

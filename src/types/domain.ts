@@ -87,12 +87,24 @@ export interface HqRenderConfig {
   shadowMode: HqShadowMode;
 }
 
+export interface GlassRenderConfig {
+  enabled: boolean;
+  colorRetention: number;
+  bevelRadius: number;
+  normalStrength: number;
+  specularStrength: number;
+  fresnelStrength: number;
+  aoStrength: number;
+  contrastStrength: number;
+}
+
 export interface RenderConfig {
   foregroundScalePercent: number;
   foregroundFit: ForegroundFit;
   foregroundOffsetX: number;
   foregroundOffsetY: number;
   foregroundRotationDegrees: number;
+  foregroundOpacityPercent: number;
   canvasInset: number;
   contentScalePercent: number;
   shape: IconShape;
@@ -108,6 +120,7 @@ export interface RenderConfig {
   gloss: GlossConfig;
   autoCutout: AutoCutoutConfig;
   hqRender: HqRenderConfig;
+  glassRender: GlassRenderConfig;
 }
 
 export interface InputItem {

@@ -1,6 +1,6 @@
 import { IconShape, BackplateType, ForegroundFit } from "../types/domain";
 import type { HqRenderConfig, PresetDefinition } from "../types/domain";
-import { DEFAULT_HQ_RENDER_CONFIG, DEFAULT_RENDER_CONFIG } from "./defaults";
+import { DEFAULT_GLASS_RENDER_CONFIG, DEFAULT_HQ_RENDER_CONFIG, DEFAULT_RENDER_CONFIG } from "./defaults";
 
 function hqConfig(patch: Partial<HqRenderConfig>): HqRenderConfig {
   return { ...DEFAULT_HQ_RENDER_CONFIG, ...patch };
@@ -16,6 +16,7 @@ const MACOS_CLASSIC_ROUNDED: PresetDefinition = {
     foregroundOffsetX: 0,
     foregroundOffsetY: 0,
     foregroundRotationDegrees: 0,
+    foregroundOpacityPercent: 100,
     canvasInset: 0,
     contentScalePercent: 100,
     shape: IconShape.RoundedRectangle,
@@ -41,6 +42,7 @@ const MACOS_CLASSIC_ROUNDED: PresetDefinition = {
     gloss: { enabled: false, width: 3, strength: 0.7, lightColor: "#FFFFFFFF", baseColor: "#808080FF", featherBlur: 0 },
     autoCutout: { enabled: false, tolerance: 20, feather: 8 },
     hqRender: hqConfig({}),
+    glassRender: { ...DEFAULT_GLASS_RENDER_CONFIG },
   },
 };
 
@@ -54,6 +56,36 @@ const HQ_RENDER: PresetDefinition = {
   },
 };
 
+const GLASS: PresetDefinition = {
+  id: "glass",
+  name: "玻璃质感",
+  description: "源图黑白玻璃浮雕；底板渐变、圆角、边缘高光与投影沿用经典参数",
+  config: {
+    ...DEFAULT_RENDER_CONFIG,
+    backplateType: BackplateType.Gradient,
+    gradientStartColor: "#9A9A9AFF",
+    gradientEndColor: "#828282FF",
+    gradientAngleDegrees: 90,
+    outerShadow: {
+      enabled: true,
+      offsetX: 0,
+      offsetY: 24,
+      blurRadius: 26,
+      spread: 0,
+      color: "#00000073",
+    },
+    gloss: {
+      enabled: true,
+      width: 3,
+      strength: 1,
+      lightColor: "#FFFFFFFF",
+      baseColor: "#C4C4C4FF",
+      featherBlur: 0,
+    },
+    glassRender: { ...DEFAULT_GLASS_RENDER_CONFIG, enabled: true },
+  },
+};
+
 const IOS_SQUIRCLE: PresetDefinition = {
   id: "ios-squircle",
   name: "iOS 超椭圆",
@@ -64,6 +96,7 @@ const IOS_SQUIRCLE: PresetDefinition = {
     foregroundOffsetX: 0,
     foregroundOffsetY: 0,
     foregroundRotationDegrees: 0,
+    foregroundOpacityPercent: 100,
     canvasInset: 12,
     contentScalePercent: 100,
     shape: IconShape.Squircle,
@@ -89,6 +122,7 @@ const IOS_SQUIRCLE: PresetDefinition = {
     gloss: { enabled: true, width: 3, strength: 0.55, lightColor: "#FFFFFFB0", baseColor: "#808080FF", featherBlur: 0 },
     autoCutout: { enabled: false, tolerance: 20, feather: 8 },
     hqRender: hqConfig({}),
+    glassRender: { ...DEFAULT_GLASS_RENDER_CONFIG },
   },
 };
 
@@ -102,6 +136,7 @@ const MINIMAL_GLYPH: PresetDefinition = {
     foregroundOffsetX: 0,
     foregroundOffsetY: 0,
     foregroundRotationDegrees: 0,
+    foregroundOpacityPercent: 100,
     canvasInset: 0,
     contentScalePercent: 100,
     shape: IconShape.Rectangle,
@@ -127,6 +162,7 @@ const MINIMAL_GLYPH: PresetDefinition = {
     gloss: { enabled: false, width: 3, strength: 0.7, lightColor: "#FFFFFFFF", baseColor: "#808080FF", featherBlur: 0 },
     autoCutout: { enabled: false, tolerance: 20, feather: 8 },
     hqRender: hqConfig({}),
+    glassRender: { ...DEFAULT_GLASS_RENDER_CONFIG },
   },
 };
 
@@ -148,6 +184,7 @@ const MACOS_GLOSS_DARK: PresetDefinition = {
 
 export const BUILT_IN_PRESETS: readonly PresetDefinition[] = Object.freeze([
   Object.freeze(HQ_RENDER),
+  Object.freeze(GLASS),
   Object.freeze(MACOS_CLASSIC_ROUNDED),
   Object.freeze(MACOS_GLOSS_DARK),
   Object.freeze(IOS_SQUIRCLE),

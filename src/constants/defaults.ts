@@ -1,5 +1,16 @@
 import { IconShape, BackplateType, ForegroundFit, HqPanelShape } from "../types/domain";
-import type { HqRenderConfig, RenderConfig, UpscaleConfig } from "../types/domain";
+import type { GlassRenderConfig, HqRenderConfig, RenderConfig, UpscaleConfig } from "../types/domain";
+
+export const DEFAULT_GLASS_RENDER_CONFIG: Readonly<GlassRenderConfig> = {
+  enabled: false,
+  colorRetention: 0.08,
+  bevelRadius: 0.12,
+  normalStrength: 1,
+  specularStrength: 0.4,
+  fresnelStrength: 0.35,
+  aoStrength: 0.55,
+  contrastStrength: 0,
+};
 
 export const DEFAULT_HQ_RENDER_CONFIG: Readonly<HqRenderConfig> = {
   enabled: false,
@@ -29,6 +40,7 @@ export const DEFAULT_RENDER_CONFIG: Readonly<RenderConfig> = {
   foregroundOffsetX: 0,
   foregroundOffsetY: 0,
   foregroundRotationDegrees: 0,
+  foregroundOpacityPercent: 100,
   canvasInset: 0,
   contentScalePercent: 100,
   shape: IconShape.RoundedRectangle,
@@ -65,6 +77,7 @@ export const DEFAULT_RENDER_CONFIG: Readonly<RenderConfig> = {
     feather: 8,
   },
   hqRender: { ...DEFAULT_HQ_RENDER_CONFIG },
+  glassRender: { ...DEFAULT_GLASS_RENDER_CONFIG },
 };
 
 export const DEFAULT_UPSCALE_CONFIG: Readonly<UpscaleConfig> = {

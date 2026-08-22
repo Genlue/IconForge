@@ -22,6 +22,7 @@ pub struct ValidatedRenderConfig {
     pub foreground_offset_x: f32,
     pub foreground_offset_y: f32,
     pub foreground_rotation_degrees: f32,
+    pub foreground_opacity: f32,
     pub canvas_inset: f32,
     pub content_scale_percent: f32,
     pub corner_radius: f32,
@@ -49,6 +50,7 @@ pub struct ValidatedRenderConfig {
     pub auto_cutout_tolerance: f32,
     pub auto_cutout_feather: f32,
     pub hq: Option<ValidatedHqRenderConfig>,
+    pub glass: Option<super::glass::ValidatedGlassRenderConfig>,
 }
 
 pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, AppError> {
@@ -90,6 +92,14 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
     {
         return Err(AppError::InvalidArgument(
             "foregroundRotationDegrees out of range".into(),
+        ));
+    }
+
+    if !config.foreground_opacity_percent.is_finite()
+        || !(0.0..=100.0).contains(&config.foreground_opacity_percent)
+    {
+        return Err(AppError::InvalidArgument(
+            "foregroundOpacityPercent must be in 0..=100".into(),
         ));
     }
 
@@ -195,6 +205,12 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
         None
     };
 
+    let glass = if config.glass_render.enabled {
+        Some(super::glass::validate_glass(config)?)
+    } else {
+        None
+    };
+
     Ok(ValidatedRenderConfig {
         shape: config.shape,
         foreground_scale_percent: config.foreground_scale_percent,
@@ -202,6 +218,7 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
         foreground_offset_x: config.foreground_offset_x,
         foreground_offset_y: config.foreground_offset_y,
         foreground_rotation_degrees: config.foreground_rotation_degrees,
+        foreground_opacity: config.foreground_opacity_percent / 100.0,
         canvas_inset: config.canvas_inset,
         content_scale_percent: config.content_scale_percent,
         corner_radius: config.corner_radius,
@@ -229,6 +246,7 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
         auto_cutout_tolerance: config.auto_cutout.tolerance,
         auto_cutout_feather: config.auto_cutout.feather,
         hq,
+        glass,
     })
 }
 
@@ -249,6 +267,12 @@ pub fn render_master(
     } else {
         source
     };
+
+    // Glass-texture renderer replaces the classic layer stack entirely when
+    // enabled (takes precedence over the HQ renderer).
+    if config.glass.is_some() {
+        return apply_content_scale(super::glass::render_glass(prepared, config)?, config);
+    }
 
     // Adaptive high-quality renderer (port of iconmask.py) replaces the
     // classic layer stack entirely when enabled.
@@ -320,7 +344,7 @@ fn apply_content_scale(
     Ok(canvas)
 }
 
-fn render_backplate(
+pub(crate) fn render_backplate(
     mask: &[f32],
     config: &ValidatedRenderConfig,
     size: u32,
