@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/tauri-conf-schema/refs/heads/main/schema.json",
   "productName": "IconForge",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "identifier": "com.iconforge.app",
   "build": {
     "frontendDist": "../dist",
@@ -17,7 +17,7 @@
         "height": 820,
         "minWidth": 960,
         "minHeight": 700,
-        "decorations": true,
+        "decorations": false,
         "center": true
       }
     ],
