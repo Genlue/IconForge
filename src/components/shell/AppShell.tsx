@@ -15,6 +15,7 @@ export function AppShell(): JSX.Element {
 
   return (
     <div
+      className="app-shell"
       style={{
         display: "grid",
         gridTemplateColumns: "minmax(520px, 1fr) 360px",
@@ -30,11 +31,12 @@ export function AppShell(): JSX.Element {
         minWidth: 960,
         minHeight: 700,
         overflow: "hidden",
+        borderRadius: 10,
         background: "var(--surface-app)",
       }}
     >
       <div style={{ gridArea: "titlebar" }}>
-        <TitleBar />
+        <TitleBar isDirty={items.length > 0} />
       </div>
       <div style={{ gridArea: "preview" }}>
         <PreviewPane />

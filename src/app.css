@@ -26,6 +26,25 @@
   --radius-panel: 24px;
   --radius-control: 12px;
   --shadow-panel: 0 18px 48px rgba(30, 41, 59, 0.12);
+  --surface-titlebar: #e6e6e6;
+  --titlebar-border: rgba(0, 0, 0, 0.08);
+
+  /* 红绿灯原生色彩变量 */
+  --traffic-close-bg: #ff5f56;
+  --traffic-close-border: #e0443e;
+  --traffic-close-glyph: #4d0000;
+
+  --traffic-min-bg: #ffbd2e;
+  --traffic-min-border: #dea123;
+  --traffic-min-glyph: #995700;
+
+  --traffic-max-bg: #27c93f;
+  --traffic-max-border: #1aab29;
+  --traffic-max-glyph: #006400;
+
+  /* 实体失焦色彩 */
+  --traffic-inactive-bg: #dfdfdf;
+  --traffic-inactive-border: #c4c4c4;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -52,7 +71,21 @@
     --empty-state-surface: rgba(16, 21, 30, 0.88);
     --empty-state-border: rgba(255, 255, 255, 0.28);
     --shadow-panel: 0 18px 48px rgba(0, 0, 0, 0.34);
+    --surface-titlebar: #1e1e1e;
+    --titlebar-border: rgba(255, 255, 255, 0.08);
+
+    --traffic-inactive-bg: #3c3c3c;
+    --traffic-inactive-border: #4a4a4a;
   }
+}
+
+[data-theme="dark"] {
+  --surface-app: #10151e;
+  --surface-titlebar: #1e1e1e;
+  --titlebar-border: rgba(255, 255, 255, 0.08);
+
+  --traffic-inactive-bg: #3c3c3c;
+  --traffic-inactive-border: #4a4a4a;
 }
 
 * {
@@ -127,68 +160,127 @@ body,
 input, select, button { color: var(--text-primary); }
 select option { background: var(--surface-input); color: var(--text-primary); }
 
-/* Custom window title bar (native decorations disabled). */
+/* 顶层主窗口框架（保留 10px 原生圆角并裁切溢出） */
+.app-shell {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* 顶栏容器 */
 .titlebar {
   height: 36px;
+  min-height: 36px;
   display: flex;
   align-items: center;
   padding: 0 14px;
-  background: var(--surface-app);
+  background: var(--surface-titlebar);
+  border-bottom: 1px solid var(--titlebar-border);
   user-select: none;
   -webkit-user-select: none;
   cursor: default;
 }
 
+/* 红绿灯外包盒：8px 间距，扩展上下安全热区至 24px */
 .traffic-lights {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
+  height: 24px;
+  padding: 0 2px;
 }
 
+/* 单个按钮通用规则 */
 .traffic-light {
   width: 12px;
   height: 12px;
   padding: 0;
+  margin: 0;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(0, 0, 0, 0.18);
   border-radius: 50%;
+  border: 1px solid transparent;
   cursor: default;
-  color: rgba(0, 0, 0, 0.55);
+  background: none;
+  outline: none;
+  position: relative;
+  transition: transform 0.08s ease, filter 0.08s ease;
 }
 
-.traffic-light svg {
+/* 内部 SVG 图标：常态隐藏 */
+.traffic-light .traffic-glyph {
+  width: 12px;
+  height: 12px;
+  display: block;
   opacity: 0;
-  transition: opacity 0.08s ease;
+  transition: opacity 0.12s cubic-bezier(0.2, 0, 0, 1);
+  pointer-events: none;
 }
 
-.traffic-lights .traffic-light:hover svg,
-.traffic-lights .traffic-light:focus-visible svg {
+/* 三灯联动悬停：光标移入容器，所有图标同时淡入 */
+.traffic-lights:hover .traffic-light .traffic-glyph,
+.traffic-lights:focus-within .traffic-light .traffic-glyph {
   opacity: 1;
 }
 
+/* 按钮色彩 */
 .traffic-light--close {
-  background: #ff5f57;
-  border-color: #e0443e;
+  background-color: var(--traffic-close-bg);
+  border-color: var(--traffic-close-border);
+  color: var(--traffic-close-glyph);
 }
 
 .traffic-light--minimize {
-  background: #febc2e;
-  border-color: #d89e24;
+  background-color: var(--traffic-min-bg);
+  border-color: var(--traffic-min-border);
+  color: var(--traffic-min-glyph);
 }
 
 .traffic-light--maximize {
-  background: #28c840;
-  border-color: #1fad30;
+  background-color: var(--traffic-max-bg);
+  border-color: var(--traffic-max-border);
+  color: var(--traffic-max-glyph);
 }
 
+/* 单击按压反馈 */
 .traffic-light:active {
-  filter: brightness(0.82);
+  filter: brightness(0.85);
+  transform: scale(0.96);
 }
 
-/* macOS dims the traffic lights when the window is not focused. */
+/* 键盘 Tab 聚焦 */
+.traffic-light:focus-visible {
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.6);
+}
+
+/* 未保存状态圆点（Dirty State） */
+.traffic-dirty-dot {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background-color: var(--traffic-close-glyph);
+  border-radius: 50%;
+  pointer-events: none;
+  transition: opacity 0.1s ease;
+}
+.traffic-lights:hover .traffic-dirty-dot {
+  opacity: 0;
+}
+
+/* 窗口失焦：实体中灰且禁用悬停图标 */
 .titlebar--unfocused .traffic-light {
-  filter: grayscale(1);
-  opacity: 0.55;
+  background-color: var(--traffic-inactive-bg) !important;
+  border-color: var(--traffic-inactive-border) !important;
+  color: transparent !important;
+}
+.titlebar--unfocused .traffic-lights:hover .traffic-light .traffic-glyph {
+  opacity: 0 !important;
+}
+
+.titlebar__drag-space {
+  flex: 1;
+  height: 100%;
 }
