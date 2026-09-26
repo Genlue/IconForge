@@ -256,20 +256,6 @@ select option { background: var(--surface-input); color: var(--text-primary); }
   box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.6);
 }
 
-/* 未保存状态圆点（Dirty State） */
-.traffic-dirty-dot {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  background-color: var(--traffic-close-glyph);
-  border-radius: 50%;
-  pointer-events: none;
-  transition: opacity 0.1s ease;
-}
-.traffic-lights:hover .traffic-dirty-dot {
-  opacity: 0;
-}
-
 /* 窗口失焦：实体中灰且禁用悬停图标 */
 .titlebar--unfocused .traffic-light {
   background-color: var(--traffic-inactive-bg) !important;

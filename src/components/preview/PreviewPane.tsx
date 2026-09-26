@@ -170,7 +170,7 @@ export function PreviewPane(): JSX.Element {
     <div className="relative flex h-full flex-col items-center justify-center gap-3 p-8">
       <div
         className="glass-panel relative flex aspect-square items-center justify-center overflow-hidden"
-        style={{ width: 420, maxWidth: "100%", maxHeight: "100%" }}
+        style={{ height: 420, maxWidth: "100%" }}
       >
         <div className="pointer-events-none absolute inset-0 z-0">
           <Checkerboard />
@@ -212,7 +212,7 @@ export function PreviewPane(): JSX.Element {
         )}
       </div>
       {selectedItem && (
-        <div className="flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-[var(--text-secondary)]">
+        <div className="flex max-w-full shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-[var(--text-secondary)]">
           <span>导入源图 {selectedItem.sourceWidth}×{selectedItem.sourceHeight}</span>
           {preview.processedSourceWidth && preview.processedSourceHeight && (
             <span>{upscaleConfig.enabled ? "增强源图" : "处理源图"} {preview.processedSourceWidth}×{preview.processedSourceHeight}</span>

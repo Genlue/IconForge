@@ -19,7 +19,7 @@ export function AppShell(): JSX.Element {
       style={{
         display: "grid",
         gridTemplateColumns: "minmax(520px, 1fr) 360px",
-        gridTemplateRows: "36px 1fr 184px 24px",
+        gridTemplateRows: "36px minmax(0, 1fr) 184px 24px",
         gridTemplateAreas: `
           "titlebar titlebar"
           "preview controls"
@@ -36,7 +36,7 @@ export function AppShell(): JSX.Element {
       }}
     >
       <div style={{ gridArea: "titlebar" }}>
-        <TitleBar isDirty={items.length > 0} />
+        <TitleBar />
       </div>
       <div style={{ gridArea: "preview" }}>
         <PreviewPane />
