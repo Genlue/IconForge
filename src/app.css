@@ -29,6 +29,11 @@
   --surface-titlebar: #e6e6e6;
   --titlebar-border: rgba(0, 0, 0, 0.08);
 
+  /* 展开区块托底色：浅色模式下比面板略深 */
+  --surface-section: rgba(15, 23, 42, 0.055);
+  --surface-section-sub: rgba(15, 23, 42, 0.035);
+  --section-border: rgba(15, 23, 42, 0.07);
+
   /* 红绿灯原生色彩变量 */
   --traffic-close-bg: #ff5f56;
   --traffic-close-border: #e0443e;
@@ -74,6 +79,11 @@
     --surface-titlebar: #1e1e1e;
     --titlebar-border: rgba(255, 255, 255, 0.08);
 
+    /* 深色模式下托底色改为比面板略浅 */
+    --surface-section: rgba(255, 255, 255, 0.065);
+    --surface-section-sub: rgba(255, 255, 255, 0.04);
+    --section-border: rgba(255, 255, 255, 0.09);
+
     --traffic-inactive-bg: #3c3c3c;
     --traffic-inactive-border: #4a4a4a;
   }
@@ -83,6 +93,10 @@
   --surface-app: #10151e;
   --surface-titlebar: #1e1e1e;
   --titlebar-border: rgba(255, 255, 255, 0.08);
+
+  --surface-section: rgba(255, 255, 255, 0.065);
+  --surface-section-sub: rgba(255, 255, 255, 0.04);
+  --section-border: rgba(255, 255, 255, 0.09);
 
   --traffic-inactive-bg: #3c3c3c;
   --traffic-inactive-border: #4a4a4a;
@@ -269,4 +283,99 @@ select option { background: var(--surface-input); color: var(--text-primary); }
 .titlebar__drag-space {
   flex: 1;
   height: 100%;
+}
+
+/* 顶栏右侧设置入口 */
+.titlebar__action {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-secondary);
+  cursor: default;
+  outline: none;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.titlebar__action:hover {
+  background: rgba(127, 139, 158, 0.18);
+  color: var(--text-primary);
+}
+
+.titlebar__action:active {
+  background: rgba(127, 139, 158, 0.28);
+}
+
+.titlebar__action:focus-visible {
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.6);
+}
+
+.titlebar--unfocused .titlebar__action {
+  color: var(--traffic-inactive-border);
+}
+
+/* 原生标题栏模式下的设置入口条 */
+.native-settings-rail {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  height: 28px;
+  padding: 0 12px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 设置对话框 */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.32);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.settings-dialog {
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  padding: 18px 20px 20px;
+  color: var(--text-primary);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+}
+
+/* 展开的折叠区块：标题与内容包在同一个圆角色块里 */
+.section-block {
+  background: var(--surface-section);
+  border: 1px solid var(--section-border);
+  border-radius: var(--radius-control);
+  padding: 4px 8px 8px;
+  margin: 3px -6px;
+}
+
+.section-block--sub {
+  background: var(--surface-section-sub);
+  border-color: transparent;
+  border-radius: 10px;
+  padding: 3px 6px 6px;
+  margin: 2px -4px;
+}
+
+/* 收起时的子级层级导轨，保持与展开态一致的左缩进 */
+.section-rail {
+  border-left: 2px solid var(--border-hairline);
+  padding-left: 10px;
 }

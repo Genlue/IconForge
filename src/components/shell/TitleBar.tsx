@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useSettingsStore } from "../../store/useSettingsStore";
 
 // 模块级单例：放在组件外，避免每次渲染重建 Window 对象导致回调 identity 变化
 const win = getCurrentWindow();
@@ -7,10 +8,26 @@ const win = getCurrentWindow();
 export function TitleBar(): JSX.Element {
   const [maximized, setMaximized] = useState(false);
   const [focused, setFocused] = useState(true);
+  const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
 
   useEffect(() => {
     let disposed = false;
-    const unlisteners: Array<() => void> = [];
+    // unlisten 函数只有在 promise resolve 后才能拿到。若组件在此之前卸载，
+    // resolve 出来的 unlisten 会 push 进已废弃的数组而永远不被调用 —— 监听器泄漏。
+    // 因此分两处收集：已 resolve 的立即记录，未 resolve 的在 then 里补调。
+    const settledUnlisteners: Array<() => void> = [];
+
+    const track = (p: Promise<() => void>): void => {
+      void p.then(
+        (unlisten) => {
+          if (disposed) unlisten();
+          else settledUnlisteners.push(unlisten);
+        },
+        () => {
+          // 注册失败：没有监听器需要清理
+        },
+      );
+    };
 
     const syncMaximized = (): void => {
       void win.isMaximized().then((val) => {
@@ -41,15 +58,17 @@ export function TitleBar(): JSX.Element {
       }
     };
 
-    void win.onResized(throttledSyncMaximized).then((u) => unlisteners.push(u));
-    void win.onFocusChanged(({ payload }) => {
-      if (!disposed) setFocused(payload);
-    }).then((u) => unlisteners.push(u));
+    track(win.onResized(throttledSyncMaximized));
+    track(
+      win.onFocusChanged(({ payload }) => {
+        if (!disposed) setFocused(payload);
+      }),
+    );
 
     return () => {
       disposed = true;
       if (trailingTimer !== undefined) window.clearTimeout(trailingTimer);
-      for (const u of unlisteners) u();
+      for (const unlisten of settledUnlisteners) unlisten();
     };
   }, []);
 
@@ -140,6 +159,28 @@ export function TitleBar(): JSX.Element {
       </div>
 
       <div className="titlebar__drag-space" data-tauri-drag-region />
+
+      <button
+        type="button"
+        className="titlebar__action"
+        title="软件设置"
+        aria-label="软件设置"
+        onClick={() => setSettingsOpen(true)}
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="12" cy="12" r="3.2" />
+          <path d="M12 2.6v2.2M12 19.2v2.2M4.4 12H2.2M21.8 12h-2.2M6.3 6.3 4.8 4.8M19.2 19.2l-1.5-1.5M17.7 6.3l1.5-1.5M4.8 19.2l1.5-1.5" />
+        </svg>
+      </button>
     </header>
   );
 }
