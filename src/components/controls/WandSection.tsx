@@ -33,11 +33,11 @@ export function WandSection(): JSX.Element {
             setSourceEditorOpen(true);
           }
         }}
-        className={`w-full rounded-lg border px-3 py-2 text-xs ${tool === "magic-wand" ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--border-hairline)] bg-white/40"}`}
+        className={`btn btn--block btn--sm${tool === "magic-wand" ? " btn--active" : ""}`}
       >
         {tool === "magic-wand" ? "魔棒使用中：在原图编辑界面点击选中" : "魔棒：进入原图编辑并选中相似区域"}
       </button>
-      <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
+      <p className="hint">
         在独立原图编辑界面中圈选相似区域（蚂蚁线框出），按 Delete 或点击下方按钮删除，被选区域在原图上变为全透明，并进入预览、PNG 和最终 ICO。
       </p>
       <RangeField
@@ -55,7 +55,7 @@ export function WandSection(): JSX.Element {
           type="button"
           disabled={!wandSelection}
           onClick={deleteWandSelection}
-          className="rounded-lg border border-red-200 bg-red-50 px-2 py-1.5 text-xs text-red-600 disabled:opacity-40"
+          className="btn btn--sm btn--danger"
         >
           删除选中区域 (Del)
         </button>
@@ -63,7 +63,7 @@ export function WandSection(): JSX.Element {
           type="button"
           disabled={!wandSelection}
           onClick={clearWandSelection}
-          className="rounded-lg border border-[var(--border-hairline)] bg-white/40 px-2 py-1.5 text-xs disabled:opacity-40"
+          className="btn btn--sm"
         >
           取消选区
         </button>
@@ -73,7 +73,7 @@ export function WandSection(): JSX.Element {
           type="button"
           disabled={disabled || strokeCount === 0}
           onClick={undoWandStroke}
-          className="rounded-lg border border-[var(--border-hairline)] bg-white/40 px-2 py-1.5 text-xs disabled:opacity-40"
+          className="btn btn--sm"
         >
           撤销删除 ({strokeCount})
         </button>
@@ -81,7 +81,7 @@ export function WandSection(): JSX.Element {
           type="button"
           disabled={disabled || strokeCount === 0}
           onClick={clearWandStrokes}
-          className="rounded-lg border border-red-200 bg-red-50 px-2 py-1.5 text-xs text-red-600 disabled:opacity-40"
+          className="btn btn--sm btn--danger"
         >
           清空删除
         </button>

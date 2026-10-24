@@ -21,40 +21,44 @@ export function AppShell(): JSX.Element {
   const decorationStatus = useWindowDecorations();
 
   const macOSStyle = titleBarStyle === "macos";
-  // Windows 原生样式下系统自己画标题栏，自定义顶栏行不再占用高度。
-  const titlebarRow = macOSStyle ? "36px" : "0px";
+  // Windows 原生样式下系统自己画标题栏，自定义工具栏行不再占用高度。
+  const toolbarRow = macOSStyle ? "48px" : "0px";
   // 无边框模式下由 web 层裁出 10px 圆角；原生模式交给系统绘制，
   // 这里再裁会把内容四角切掉并露出底色。
   const radius = macOSStyle ? 10 : 0;
   const nativeFrameFailed = !macOSStyle && decorationStatus === "unsupported";
 
+  // Golden Gate 窗格图：全高来源列表 | 文档画布 | 尾随检查器；
+  // 工具栏与状态栏横贯窗口，窗格之间只用 hairline 分隔。
   return (
     <div
       className="app-shell"
       style={{
         display: "grid",
-        gridTemplateColumns: "minmax(520px, 1fr) 360px",
-        gridTemplateRows: `${titlebarRow} minmax(0, 1fr) 184px 24px`,
+        gridTemplateColumns: "224px minmax(0, 1fr) 332px",
+        gridTemplateRows: `${toolbarRow} minmax(0, 1fr) 26px`,
         gridTemplateAreas: `
-          "titlebar titlebar"
-          "preview controls"
-          "batch controls"
-          "status status"
+          "toolbar toolbar toolbar"
+          "sidebar preview inspector"
+          "status status status"
         `,
         width: "100vw",
         height: "100vh",
-        minWidth: 960,
-        minHeight: 700,
+        minWidth: 1040,
+        minHeight: 620,
         overflow: "hidden",
         borderRadius: radius,
-        background: "var(--surface-app)",
+        background: "var(--surface-content)",
       }}
     >
       {macOSStyle && (
-        <div style={{ gridArea: "titlebar" }}>
+        <div style={{ gridArea: "toolbar", minHeight: 0 }}>
           <TitleBar />
         </div>
       )}
+      <div style={{ gridArea: "sidebar", minHeight: 0 }}>
+        <BatchTray />
+      </div>
       <div
         style={{
           gridArea: "preview",
@@ -62,18 +66,19 @@ export function AppShell(): JSX.Element {
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
+          background: "var(--surface-content)",
         }}
       >
-        {/* 原生模式下没有自定义顶栏，单独给一行入口，保证设置随时可达 */}
+        {/* 原生模式下没有自定义工具栏，单独给一行入口，保证设置随时可达 */}
         {!macOSStyle && (
           <div className="native-settings-rail">
-            <span className="text-[11px] text-[var(--text-secondary)]">
+            <span className="text-[11px] font-medium text-[var(--text-secondary)]">
               IconForge
             </span>
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
-              className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] text-[var(--text-secondary)] transition-colors hover:bg-white/60 hover:text-[var(--text-primary)]"
+              className="btn btn--ghost btn--sm"
               title="软件设置"
               aria-label="软件设置"
             >
@@ -95,7 +100,7 @@ export function AppShell(): JSX.Element {
           </div>
         )}
         {nativeFrameFailed && (
-          <div className="mx-3 mb-1 rounded-lg border border-[var(--warning-border)] bg-[var(--warning-surface)] px-3 py-1.5 text-[11px] leading-4 text-[var(--warning-text)]">
+          <div className="hint m-3 rounded-md border border-[var(--border-hairline)] bg-[var(--warning-soft)] px-3 py-1.5 text-[var(--warning-text)]">
             未能切换到系统标题栏，窗口当前没有标题栏。请在设置中改回「macOS 红绿灯」。
           </div>
         )}
@@ -103,11 +108,8 @@ export function AppShell(): JSX.Element {
           <PreviewPane />
         </div>
       </div>
-      <div style={{ gridArea: "controls" }}>
+      <div style={{ gridArea: "inspector", minHeight: 0 }}>
         <ParameterPanel />
-      </div>
-      <div style={{ gridArea: "batch" }}>
-        <BatchTray />
       </div>
       <ErrorBanner error={error} onDismiss={clearError} />
       <div style={{ gridArea: "status" }}>

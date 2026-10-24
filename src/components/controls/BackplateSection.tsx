@@ -19,13 +19,18 @@ export function BackplateSection(props: BackplateSectionProps): JSX.Element {
   const { config, onChange } = props;
 
   return (
-    <section className="space-y-3">
-      <SegmentedControl
-        id="backplate"
-        value={config.backplateType}
-        options={BACKPLATE_OPTIONS}
-        onChange={(v) => onChange({ backplateType: v })}
-      />
+    <div className="flex flex-col gap-2.5">
+      <div className="field">
+        <span className="field__label">背板类型</span>
+        <div className="field__controls">
+          <SegmentedControl
+            id="backplate"
+            value={config.backplateType}
+            options={BACKPLATE_OPTIONS}
+            onChange={(v) => onChange({ backplateType: v })}
+          />
+        </div>
+      </div>
       {config.backplateType === BackplateType.Solid && (
         <ColorField
           id="bp-color"
@@ -63,6 +68,6 @@ export function BackplateSection(props: BackplateSectionProps): JSX.Element {
           />
         </>
       )}
-    </section>
+    </div>
   );
 }

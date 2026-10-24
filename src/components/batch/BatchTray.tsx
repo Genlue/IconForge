@@ -1,7 +1,10 @@
 import { useIconForgeStore } from "../../store/useIconForgeStore";
 import { BatchItem } from "./BatchItem";
-import { BatchToolbar } from "./BatchToolbar";
 
+/**
+ * 全高来源列表（导航层）：唯一的圆角选择填充属于选中行，
+ * 未选行保持安静；导入/导出动作在工具栏，这里只放列表与清空。
+ */
 export function BatchTray(): JSX.Element {
   const items = useIconForgeStore((s) => s.items);
   const selectedId = useIconForgeStore((s) => s.selectedItemId);
@@ -10,26 +13,39 @@ export function BatchTray(): JSX.Element {
   const clearItems = useIconForgeStore((s) => s.clearItems);
 
   return (
-    <div className="glass-panel flex h-full flex-col overflow-hidden p-3">
-      <BatchToolbar itemCount={items.length} onClear={clearItems} />
-      <div className="mt-2 flex flex-1 gap-2 overflow-x-auto">
-        {items.length === 0 && (
-          <div className="flex w-full items-center justify-center">
-            <span className="text-xs text-[var(--text-secondary)]">
-              暂无导入项 — 拖入文件或点击导入
-            </span>
-          </div>
+    <aside className="pane-sidebar">
+      <div className="source-header">
+        <span>导入项{items.length > 0 ? ` · ${items.length}` : ""}</span>
+        {items.length > 0 && (
+          <button
+            type="button"
+            onClick={clearItems}
+            className="text-[11px] text-[var(--text-secondary)] transition-colors hover:text-[var(--danger)]"
+            title="移除全部导入项"
+          >
+            清空
+          </button>
         )}
-        {items.map((item) => (
-          <BatchItem
-            key={item.id}
-            item={item}
-            selected={item.id === selectedId}
-            onSelect={selectItem}
-            onRemove={removeItem}
-          />
-        ))}
       </div>
-    </div>
+      <div className="source-list">
+        {items.length === 0 ? (
+          <div className="flex h-full items-center justify-center px-4">
+            <p className="hint text-center leading-5">
+              拖入文件到窗口，<br />或点工具栏「导入」
+            </p>
+          </div>
+        ) : (
+          items.map((item) => (
+            <BatchItem
+              key={item.id}
+              item={item}
+              selected={item.id === selectedId}
+              onSelect={selectItem}
+              onRemove={removeItem}
+            />
+          ))
+        )}
+      </div>
+    </aside>
   );
 }

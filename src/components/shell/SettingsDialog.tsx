@@ -9,7 +9,7 @@ const TITLE_BAR_OPTIONS: ReadonlyArray<{ value: TitleBarStyle; label: string }> 
 ];
 
 const TITLE_BAR_HINTS: Record<TitleBarStyle, string> = {
-  macos: "自制 36px 顶栏，左侧 macOS 红绿灯，右侧内嵌设置入口。",
+  macos: "自制 48px 统一工具栏，左侧 macOS 红绿灯，标题居中，导入 / 导出 / 设置靠右。",
   windows: "交由系统绘制标题栏与最小化/最大化/关闭按钮，不占用窗口高度。",
 };
 
@@ -18,6 +18,7 @@ export interface SettingsDialogProps {
   nativeFrameFailed?: boolean;
 }
 
+/** 设置面板：瞬态表面，Liquid Glass 的正确去处。 */
 export function SettingsDialog(props: SettingsDialogProps): JSX.Element | null {
   const open = useSettingsStore((s) => s.settingsOpen);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
@@ -37,45 +38,46 @@ export function SettingsDialog(props: SettingsDialogProps): JSX.Element | null {
 
   return (
     <div
-      className="settings-overlay"
+      className="sheet-overlay"
       role="presentation"
       onClick={() => setSettingsOpen(false)}
     >
       <div
-        className="settings-dialog"
+        className="sheet w-[340px] max-w-[calc(100vw-32px)]"
         role="dialog"
         aria-modal="true"
         aria-label="软件设置"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-[var(--text-primary)]">
-            软件设置
-          </h2>
+        <div className="sheet__header">
+          <h2 className="sheet__title">软件设置</h2>
           <button
             type="button"
             aria-label="关闭设置"
             title="关闭设置"
             onClick={() => setSettingsOpen(false)}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--text-secondary)] hover:bg-white/60 hover:text-[var(--text-primary)]"
+            className="sheet__close"
           >
             ×
           </button>
         </div>
-
-        <div className="mt-4 space-y-2">
-          <span className="text-xs text-[var(--text-secondary)]">顶栏样式</span>
-          <SegmentedControl
-            id="settings-title-bar-style"
-            value={titleBarStyle}
-            options={TITLE_BAR_OPTIONS}
-            onChange={setTitleBarStyle}
-          />
-          <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
+        <div className="sheet__body">
+          <div className="field">
+            <span className="field__label">顶栏样式</span>
+            <div className="field__controls">
+              <SegmentedControl
+                id="settings-title-bar-style"
+                value={titleBarStyle}
+                options={TITLE_BAR_OPTIONS}
+                onChange={setTitleBarStyle}
+              />
+            </div>
+          </div>
+          <p className="hint">
             {TITLE_BAR_HINTS[titleBarStyle]}
           </p>
           {props.nativeFrameFailed && (
-            <p className="text-[11px] leading-4 text-[var(--warning-text)]">
+            <p className="hint text-[var(--warning-text)]">
               当前窗口未能应用系统标题栏，建议改回「macOS 红绿灯」。
             </p>
           )}

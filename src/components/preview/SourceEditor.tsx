@@ -4,6 +4,7 @@ import type { BrushPoint } from "../../types/domain";
 import { Checkerboard } from "./Checkerboard";
 import { Spinner } from "../common/Spinner";
 import { RangeField } from "../controls/RangeField";
+import { SegmentedControl } from "../controls/SegmentedControl";
 import { commands } from "../../lib/tauri";
 import { drawSelectionOverlay, loadImage } from "../../lib/selectionOverlay";
 
@@ -187,43 +188,36 @@ export function SourceEditor(): JSX.Element | null {
 
   if (!selectedItem || !itemConfig) return null;
 
+  const editorTool = previewTool === "magic-wand" || previewTool === "source-eraser"
+    ? previewTool
+    : "none";
+
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white/90 backdrop-blur-sm dark:bg-black/80">
-      <div className="flex items-center justify-between gap-4 border-b border-[var(--border-hairline)] px-5 py-3">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--surface-content)]">
+      <div className="flex items-center justify-between gap-4 border-b border-[var(--border-hairline)] px-5 py-2.5">
         <div className="flex items-center gap-3">
-          <h2 className="text-sm font-semibold text-[var(--text-primary)]">原图编辑</h2>
+          <h2 className="text-[13px] font-semibold text-[var(--text-primary)]">原图编辑</h2>
           <span className="text-[11px] text-[var(--text-secondary)]">
             {selectedItem.displayName} · {dimensions ? `${dimensions.w}×${dimensions.h}` : ""}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setPreviewTool("none")}
-            className={`rounded-lg border px-3 py-1.5 text-xs ${previewTool === "none" ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--border-hairline)] bg-white/40 text-[var(--text-primary)]"}`}
-          >
-            选择
-          </button>
-          <button
-            type="button"
-            onClick={() => setPreviewTool(previewTool === "magic-wand" ? "none" : "magic-wand")}
-            className={`rounded-lg border px-3 py-1.5 text-xs ${previewTool === "magic-wand" ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--border-hairline)] bg-white/40 text-[var(--text-primary)]"}`}
-          >
-            魔棒
-          </button>
-          <button
-            type="button"
-            onClick={() => setPreviewTool(previewTool === "source-eraser" ? "none" : "source-eraser")}
-            className={`rounded-lg border px-3 py-1.5 text-xs ${previewTool === "source-eraser" ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--border-hairline)] bg-white/40 text-[var(--text-primary)]"}`}
-          >
-            橡皮擦
-          </button>
+          <SegmentedControl
+            id="source-editor-tool"
+            value={editorTool}
+            options={[
+              { value: "none", label: "选择" },
+              { value: "magic-wand", label: "魔棒" },
+              { value: "source-eraser", label: "橡皮擦" },
+            ]}
+            onChange={(v) => setPreviewTool(v === editorTool ? "none" : v)}
+          />
           <span className="mx-1 h-4 w-px bg-[var(--border-hairline)]" />
           <button
             type="button"
             disabled={(itemConfig.eraserStrokes.length ?? 0) === 0}
             onClick={undoEraserStroke}
-            className="rounded-lg border border-[var(--border-hairline)] bg-white/40 px-3 py-1.5 text-xs text-[var(--text-primary)] disabled:opacity-40"
+            className="btn btn--sm"
             title="撤销最近一次擦除"
           >
             撤销擦除
@@ -232,7 +226,7 @@ export function SourceEditor(): JSX.Element | null {
             type="button"
             disabled={(itemConfig.wandStrokes.length ?? 0) === 0}
             onClick={undoWandStroke}
-            className="rounded-lg border border-[var(--border-hairline)] bg-white/40 px-3 py-1.5 text-xs text-[var(--text-primary)] disabled:opacity-40"
+            className="btn btn--sm"
             title="撤销最近一次魔棒删除"
           >
             撤销删除
@@ -243,7 +237,7 @@ export function SourceEditor(): JSX.Element | null {
                 type="button"
                 disabled={!wandSelection || selecting}
                 onClick={deleteWandSelection}
-                className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs text-red-600 disabled:opacity-40"
+                className="btn btn--sm btn--danger"
               >
                 删除选中 (Del)
               </button>
@@ -251,7 +245,7 @@ export function SourceEditor(): JSX.Element | null {
                 type="button"
                 disabled={!wandSelection}
                 onClick={clearWandSelection}
-                className="rounded-lg border border-[var(--border-hairline)] bg-white/40 px-3 py-1.5 text-xs text-[var(--text-primary)] disabled:opacity-40"
+                className="btn btn--sm"
               >
                 取消选区
               </button>
@@ -264,7 +258,7 @@ export function SourceEditor(): JSX.Element | null {
               clearWandSelection();
               setSourceEditorOpen(false);
             }}
-            className="rounded-lg bg-[var(--accent)] px-4 py-1.5 text-xs text-white"
+            className="btn btn--primary btn--sm px-4"
           >
             完成
           </button>
@@ -272,13 +266,12 @@ export function SourceEditor(): JSX.Element | null {
       </div>
       {/* Source-editing parameters live here so adjustments happen while looking
           at the original image. */}
-      <div className="flex flex-wrap items-end gap-x-6 gap-y-2 border-b border-[var(--border-hairline)] px-5 py-3">
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-2 border-b border-[var(--border-hairline)] px-5 py-2.5">
         <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
           <input
             type="checkbox"
             checked={itemConfig.renderConfig.autoCutout.enabled}
             onChange={(e) => updateRenderConfig({ autoCutout: { ...itemConfig.renderConfig.autoCutout, enabled: e.target.checked } })}
-            className="rounded"
           />
           自动抠图
         </label>
@@ -344,7 +337,7 @@ export function SourceEditor(): JSX.Element | null {
         </div>
       </div>
       <div className="flex flex-1 items-center justify-center overflow-auto p-6">
-        <div className="relative max-h-full max-w-full overflow-hidden rounded-xl border border-[var(--border-hairline)] shadow-lg">
+        <div className="document-canvas relative max-h-full max-w-full">
           <div className="pointer-events-none absolute inset-0 z-0">
             <Checkerboard />
           </div>
@@ -373,19 +366,19 @@ export function SourceEditor(): JSX.Element | null {
             className="pointer-events-none absolute inset-0 z-20 h-full w-full"
           />
           {loading && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/55 backdrop-blur-sm">
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-[var(--surface-overlay)] opacity-70 backdrop-blur-sm">
               <Spinner label="加载原图..." />
             </div>
           )}
         </div>
       </div>
-      <div className="border-t border-[var(--border-hairline)] px-5 py-2 text-center text-[11px] text-[var(--text-secondary)]">
+      <div className="hint border-t border-[var(--border-hairline)] px-5 py-2 text-center">
         {error ? (
-          <span className="text-red-600">{error}</span>
+          <span className="text-[var(--danger)]">{error}</span>
         ) : previewTool === "magic-wand"
-          ? "点击选中相似区域（蚂蚁线），按 Delete 或点「删除选中」删除为透明；容差可在左侧「原图处理 → 魔棒」调整。"
+          ? "点击选中相似区域（蚂蚁线），按 Delete 或点「删除选中」删除为透明；容差可在上方调整。"
           : previewTool === "source-eraser"
-            ? "涂抹即擦除原图（变为透明），大小/硬度可在左侧「原图处理 → 橡皮擦」调整。"
+            ? "涂抹即擦除原图（变为透明），大小/硬度可在上方调整。"
             : "选择工具后在此原图上修改，背景棋盘格表示透明。修改结果会进入预览、PNG 和最终 ICO。"}
       </div>
     </div>

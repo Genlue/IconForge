@@ -48,10 +48,9 @@ const applyPreset = useIconForgeStore((s) => s.applyPreset);
   const hqActive = (isHqPreset || renderConfig.hqRender.enabled) && !glassActive;
 
   return (
-    <aside className="h-full overflow-y-auto p-4" style={{ minWidth: 0 }}>
-      <div className="glass-panel space-y-1 p-4">
-        {/* Presets */}
-        <CollapsibleSection title="预设">
+    <aside className="pane-inspector">
+      {/* Presets */}
+      <CollapsibleSection title="预设" defaultOpen>
           <PresetSelector
             presets={[...BUILT_IN_PRESETS, ...customPresets]}
             activePresetId={activePresetId}
@@ -63,7 +62,7 @@ const applyPreset = useIconForgeStore((s) => s.applyPreset);
             type="button"
             onClick={saveCurrentAsPreset}
             disabled={!hasSelection}
-            className="mt-2 w-full rounded-lg border border-[var(--accent)] bg-[var(--accent)]/10 px-3 py-2 text-xs text-[var(--accent)] transition-colors hover:bg-[var(--accent)]/15 disabled:cursor-not-allowed disabled:opacity-40"
+            className="btn btn--block"
             title="保存渲染风格设置（不含原图处理、画质增强与画笔）"
           >
             保存当前设置为预设
@@ -72,13 +71,13 @@ const applyPreset = useIconForgeStore((s) => s.applyPreset);
             type="button"
             onClick={applyCurrentConfigToAll}
             disabled={!hasSelection || itemCount < 2}
-            className="mt-3 w-full rounded-lg border border-[var(--border-hairline)] bg-white/40 px-3 py-2 text-xs text-[var(--text-primary)] transition-colors hover:bg-white/60 disabled:cursor-not-allowed disabled:opacity-40"
+            className="btn btn--block"
             title="复制当前图标的所有参数，包括 Real-CUGAN 设置"
           >
             应用当前配置到全部图标
           </button>
           {itemCount > 1 && (
-            <p className="mt-2 text-[10px] leading-4 text-[var(--text-secondary)]">
+            <p className="hint">
               右侧参数仅修改当前图标；需要统一时再使用上方按钮。
             </p>
           )}
@@ -169,7 +168,6 @@ const applyPreset = useIconForgeStore((s) => s.applyPreset);
         <CollapsibleSection title="导出">
           <ExportActions />
         </CollapsibleSection>
-      </div>
     </aside>
   );
 }

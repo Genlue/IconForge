@@ -9,45 +9,68 @@ export interface CollapsibleSectionProps {
   children: ReactNode;
 }
 
+function Chevron(): JSX.Element {
+  return (
+    <svg
+      width="9"
+      height="9"
+      viewBox="0 0 12 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4.5 2.5 L8 6 L4.5 9.5" />
+    </svg>
+  );
+}
+
 /**
- * Collapsible block: the whole title row is the toggle target. Closed by
- * default; no arrow indicator. While open the header and its content sit inside
- * one rounded tinted block so the active region reads as a single group. Use
- * `variant="sub"` for nested sections so the hierarchy stays visible.
+ * 检查器分组：标题行整体可点，右侧 chevron 指示状态。
+ * 层级靠 hairline 分隔与缩进表达，不再使用嵌套圆角色块；
+ * `variant="sub"` 用于二级分组（更小的标题 + 缩进）。
  */
 export function CollapsibleSection(props: CollapsibleSectionProps): JSX.Element {
   const [open, setOpen] = useState(props.defaultOpen ?? false);
   const sub = props.variant === "sub";
 
-  const blockClass = open
-    ? sub
-      ? "section-block section-block--sub"
-      : "section-block"
-    : sub
-      ? "section-rail"
-      : undefined;
+  if (sub) {
+    return (
+      <div>
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="inspector-subsection__header flex w-full items-center gap-1.5 text-left transition-colors hover:text-[var(--text-primary)]"
+        >
+          <span className={`inline-flex transition-transform ${open ? "rotate-90" : ""}`}>
+            <Chevron />
+          </span>
+          {props.title}
+        </button>
+        {open && (
+          <div className="mt-1.5 flex flex-col gap-2.5 pl-3.5">{props.children}</div>
+        )}
+      </div>
+    );
+  }
 
   return (
-    <section className={blockClass}>
+    <section className={`inspector-section${open ? " inspector-section--open" : ""}`}>
       <button
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={`block w-full text-left transition-colors ${
-          open
-            ? sub
-              ? "pb-0.5 pt-0.5 text-[11px] font-medium text-[var(--text-primary)]"
-              : "pb-1 pt-0.5 text-xs font-semibold text-[var(--text-primary)]"
-            : `rounded-md py-1 hover:bg-white/40 ${
-                sub
-                  ? "text-[11px] font-medium text-[var(--text-secondary)]"
-                  : "px-1 text-xs font-semibold text-[var(--text-primary)]"
-              }`
-        }`}
+        className="inspector-section__header"
       >
+        <span className="inspector-section__chevron">
+          <Chevron />
+        </span>
         {props.title}
       </button>
-      {open && <div className="mt-2 space-y-3">{props.children}</div>}
+      {open && <div className="inspector-section__body">{props.children}</div>}
     </section>
   );
 }

@@ -167,50 +167,49 @@ export function PreviewPane(): JSX.Element {
           : "default";
 
   return (
-    <div className="relative flex h-full flex-col items-center justify-center gap-3 p-8">
-      <div
-        className="glass-panel relative flex aspect-square items-center justify-center overflow-hidden"
-        style={{ height: 420, maxWidth: "100%" }}
-      >
-        <div className="pointer-events-none absolute inset-0 z-0">
-          <Checkerboard />
-        </div>
-        {selectedItem ? (
-          <>
+    <div className="flex h-full flex-col items-center justify-center gap-3 p-6">
+      {/* 文档画布：内容平面上的文档，hairline 边界 + 克制的投影 */}
+      {selectedItem ? (
+        <div
+          className="document-canvas relative aspect-square"
+          style={{ height: "min(420px, 100%)", maxWidth: "100%" }}
+        >
+          <div className="pointer-events-none absolute inset-0 z-0">
+            <Checkerboard />
+          </div>
+          <canvas
+            ref={canvasRef}
+            width={420}
+            height={420}
+            className="relative z-10 h-full w-full touch-none"
+            style={{ cursor }}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={finishStroke}
+            onPointerCancel={() => setDrawingPoints([])}
+          />
+          {(previewTool === "magic-wand") && (
             <canvas
-              ref={canvasRef}
+              ref={overlayRef}
               width={420}
               height={420}
-              className="relative z-10 h-full w-full touch-none"
-              style={{ cursor }}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={finishStroke}
-              onPointerCancel={() => setDrawingPoints([])}
+              className="pointer-events-none absolute inset-0 z-20 h-full w-full"
             />
-            {(previewTool === "magic-wand") && (
-              <canvas
-                ref={overlayRef}
-                width={420}
-                height={420}
-                className="pointer-events-none absolute inset-0 z-20 h-full w-full"
-              />
-            )}
-            {preview.loading && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/55 backdrop-blur-sm">
-                <Spinner label={upscaleConfig.enabled ? "Real-CUGAN 处理中..." : "正在渲染..."} />
-              </div>
-            )}
-            {preview.error && (
-              <div className="absolute inset-x-5 bottom-5 z-20 rounded-xl border border-red-200 bg-red-50/95 p-3 text-xs leading-5 text-red-700">
-                {preview.error.message}
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="relative z-10"><EmptyDropZone dragActive={dragActive} /></div>
-        )}
-      </div>
+          )}
+          {preview.loading && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-[var(--surface-overlay)] opacity-70 backdrop-blur-sm">
+              <Spinner label={upscaleConfig.enabled ? "Real-CUGAN 处理中..." : "正在渲染..."} />
+            </div>
+          )}
+          {preview.error && (
+            <div className="absolute inset-x-4 bottom-4 z-20 rounded-lg border border-[var(--border-hairline)] bg-[var(--surface-popover)] px-3 py-2 text-xs leading-5 text-[var(--danger)] backdrop-blur-xl">
+              {preview.error.message}
+            </div>
+          )}
+        </div>
+      ) : (
+        <EmptyDropZone dragActive={dragActive} />
+      )}
       {selectedItem && (
         <div className="flex max-w-full shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-[var(--text-secondary)]">
           <span>导入源图 {selectedItem.sourceWidth}×{selectedItem.sourceHeight}</span>
@@ -227,7 +226,7 @@ export function PreviewPane(): JSX.Element {
           <button
             type="button"
             onClick={() => setSourceEditorOpen(true)}
-            className="rounded-lg border border-[var(--accent)] bg-[var(--accent)]/10 px-3 py-1 text-xs text-[var(--accent)] hover:bg-[var(--accent)]/15"
+            className="btn btn--sm"
           >
             {wandStrokes.length + eraserStrokes.length > 0
               ? `编辑原图（${wandStrokes.length + eraserStrokes.length} 处修改）`
@@ -237,7 +236,7 @@ export function PreviewPane(): JSX.Element {
             <button
               type="button"
               onClick={deleteWandSelection}
-              className="rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-600 hover:bg-red-100"
+              className="btn btn--sm btn--danger"
             >
               删除选中区域 (Del)
             </button>

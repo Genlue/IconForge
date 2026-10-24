@@ -1,14 +1,29 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { open } from "@tauri-apps/plugin-dialog";
+import { useIconForgeStore } from "../../store/useIconForgeStore";
 import { useSettingsStore } from "../../store/useSettingsStore";
 
 // 模块级单例：放在组件外，避免每次渲染重建 Window 对象导致回调 identity 变化
 const win = getCurrentWindow();
 
+const IMPORT_FILTERS = [{
+  name: "支持的文件",
+  extensions: ["png","jpg","jpeg","webp","bmp","gif","tif","tiff","ico","exe","dll","lnk"]
+}];
+
+/**
+ * 统一工具栏（命令层）：红绿灯居左、窗口标题居中、
+ * 导入 / 导出 / 设置靠右按任务分组。内容与导航保持平静，
+ * 玻璃只出现在这层系统铬上。
+ */
 export function TitleBar(): JSX.Element {
   const [maximized, setMaximized] = useState(false);
   const [focused, setFocused] = useState(true);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
+  const itemCount = useIconForgeStore((s) => s.items.length);
+  const isExporting = useIconForgeStore((s) => s.isExporting);
+  const exportAsIco = useIconForgeStore((s) => s.exportAsIco);
 
   useEffect(() => {
     let disposed = false;
@@ -72,9 +87,14 @@ export function TitleBar(): JSX.Element {
     };
   }, []);
 
+  const handleImport = useCallback(async () => {
+    const selected = await open({ multiple: true, directory: false, filters: IMPORT_FILTERS });
+    if (selected?.length) await useIconForgeStore.getState().importPaths(selected);
+  }, []);
+
   return (
     <header
-      className={`titlebar${focused ? "" : " titlebar--unfocused"}`}
+      className={`toolbar${focused ? "" : " toolbar--unfocused"}`}
       data-tauri-drag-region
     >
       <div className="traffic-lights" data-tauri-drag-region>
@@ -158,29 +178,83 @@ export function TitleBar(): JSX.Element {
         </button>
       </div>
 
-      <div className="titlebar__drag-space" data-tauri-drag-region />
+      <div className="toolbar__spacer" data-tauri-drag-region />
+      <span className="toolbar__title">IconForge</span>
 
-      <button
-        type="button"
-        className="titlebar__action"
-        title="软件设置"
-        aria-label="软件设置"
-        onClick={() => setSettingsOpen(true)}
-      >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+      <div className="toolbar__group">
+        <button
+          type="button"
+          onClick={() => void handleImport()}
+          className="btn btn--ghost"
+          title="导入图片、EXE、DLL、LNK (Ctrl+O)"
         >
-          <circle cx="12" cy="12" r="3.2" />
-          <path d="M12 2.6v2.2M12 19.2v2.2M4.4 12H2.2M21.8 12h-2.2M6.3 6.3 4.8 4.8M19.2 19.2l-1.5-1.5M17.7 6.3l1.5-1.5M4.8 19.2l1.5-1.5" />
-        </svg>
-      </button>
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          导入
+        </button>
+
+        <span className="toolbar__divider" />
+
+        <button
+          type="button"
+          onClick={() => void exportAsIco()}
+          disabled={itemCount === 0 || isExporting}
+          className="btn btn--primary"
+          title="导出当前选中图标为 ICO"
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          {isExporting ? "导出中..." : "导出 ICO"}
+        </button>
+
+        <span className="toolbar__divider" />
+
+        <button
+          type="button"
+          className="toolbar__action"
+          title="软件设置"
+          aria-label="软件设置"
+          onClick={() => setSettingsOpen(true)}
+        >
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="3.2" />
+            <path d="M12 2.6v2.2M12 19.2v2.2M4.4 12H2.2M21.8 12h-2.2M6.3 6.3 4.8 4.8M19.2 19.2l-1.5-1.5M17.7 6.3l1.5-1.5M4.8 19.2l1.5-1.5" />
+          </svg>
+        </button>
+      </div>
     </header>
   );
 }

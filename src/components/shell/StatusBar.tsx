@@ -10,15 +10,15 @@ export function StatusBar(props: StatusBarProps): JSX.Element {
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
 
   return (
-    <div className="flex h-6 items-center justify-between px-3 text-xs text-[var(--text-secondary)]">
+    <footer className="statusbar">
       <span>{props.busy ? "处理中..." : props.message ?? `${props.itemCount} 项`}</span>
-      {/* 常驻入口：切到 Windows 原生顶栏后自定义顶栏消失，仍能从这里打开设置 */}
+      {/* 常驻入口：切到 Windows 原生顶栏后自定义工具栏消失，仍能从这里打开设置 */}
       <button
         type="button"
         title="软件设置"
         aria-label="软件设置"
         onClick={() => setSettingsOpen(true)}
-        className="flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-white/60 hover:text-[var(--text-primary)]"
+        className="flex items-center gap-1 rounded px-1.5 py-0.5 transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
       >
         <svg
           width="12"
@@ -35,6 +35,6 @@ export function StatusBar(props: StatusBarProps): JSX.Element {
         </svg>
         <span>设置</span>
       </button>
-    </div>
+    </footer>
   );
 }

@@ -10,20 +10,22 @@ export interface ShadowSectionProps {
 export function ShadowSection(props: ShadowSectionProps): JSX.Element {
   const { value, onChange } = props;
   return (
-    <section className="space-y-3">
-      <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-        <input
-          type="checkbox"
-          checked={value.enabled}
-          onChange={(e) => onChange({ enabled: e.target.checked })}
-          className="rounded"
-        />
-        启用阴影
-      </label>
-      <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
+    <div className="flex flex-col gap-2.5">
+      <div className="field">
+        <span className="field__label">启用阴影</span>
+        <div className="field__controls justify-end">
+          <input
+            type="checkbox"
+            checked={value.enabled}
+            aria-label="启用阴影"
+            onChange={(e) => onChange({ enabled: e.target.checked })}
+          />
+        </div>
+      </div>
+      <p className="hint">
         外阴影仍受 256×256 ICO 画布限制；阴影被裁切时，请在“形状”中增加画布边距。
       </p>
-      <div className={value.enabled ? "" : "pointer-events-none opacity-40"}>
+      <div className={`flex flex-col gap-2.5${value.enabled ? "" : " pointer-events-none opacity-40"}`}>
         <RangeField
           id="shadow-x"
           label="偏移 X"
@@ -68,6 +70,6 @@ export function ShadowSection(props: ShadowSectionProps): JSX.Element {
           onChange={(v) => onChange({ color: v })}
         />
       </div>
-    </section>
+    </div>
   );
 }

@@ -11,16 +11,21 @@ export interface ForegroundSectionProps {
 export function ForegroundSection(props: ForegroundSectionProps): JSX.Element {
   const { config, onChange } = props;
   return (
-    <section className="space-y-3">
-      <SegmentedControl
-        id="foreground-fit"
-        value={config.foregroundFit}
-        options={[
-          { value: ForegroundFit.Contain, label: "适应" },
-          { value: ForegroundFit.Cover, label: "填满" },
-        ]}
-        onChange={(v) => onChange({ foregroundFit: v })}
-      />
+    <div className="flex flex-col gap-2.5">
+      <div className="field">
+        <span className="field__label">适应方式</span>
+        <div className="field__controls">
+          <SegmentedControl
+            id="foreground-fit"
+            value={config.foregroundFit}
+            options={[
+              { value: ForegroundFit.Contain, label: "适应" },
+              { value: ForegroundFit.Cover, label: "填满" },
+            ]}
+            onChange={(v) => onChange({ foregroundFit: v })}
+          />
+        </div>
+      </div>
       <RangeField
         id="fg-scale"
         label="缩放"
@@ -41,7 +46,7 @@ export function ForegroundSection(props: ForegroundSectionProps): JSX.Element {
         unit="%"
         onChange={(v) => onChange({ foregroundOpacityPercent: v })}
       />
-      <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
+      <p className="hint">
         以源图的非透明有效内容为基准；“填满”会铺满形状并裁切，超过 100% 可继续放大。透明度降低时前景整体淡出，露出底板。
       </p>
       <RangeField
@@ -72,6 +77,6 @@ export function ForegroundSection(props: ForegroundSectionProps): JSX.Element {
         unit="°"
         onChange={(v) => onChange({ foregroundRotationDegrees: v })}
       />
-    </section>
+    </div>
   );
 }

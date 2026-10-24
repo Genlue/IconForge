@@ -29,11 +29,11 @@ export function EraserSection(): JSX.Element {
             setSourceEditorOpen(true);
           }
         }}
-        className={`w-full rounded-lg border px-3 py-2 text-xs ${tool === "source-eraser" ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--border-hairline)] bg-white/40"}`}
+        className={`btn btn--block btn--sm${tool === "source-eraser" ? " btn--active" : ""}`}
       >
         {tool === "source-eraser" ? "橡皮擦使用中：在原图编辑界面涂抹" : "橡皮擦：进入原图编辑并涂抹"}
       </button>
-      <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
+      <p className="hint">
         在独立原图编辑界面涂抹：涂抹处变为全透明，并进入预览、PNG 和最终 ICO。
       </p>
       <RangeField
@@ -61,7 +61,7 @@ export function EraserSection(): JSX.Element {
           type="button"
           disabled={disabled || strokeCount === 0}
           onClick={undoEraserStroke}
-          className="rounded-lg border border-[var(--border-hairline)] bg-white/40 px-2 py-1.5 text-xs disabled:opacity-40"
+          className="btn btn--sm"
         >
           撤销一笔 ({strokeCount})
         </button>
@@ -69,7 +69,7 @@ export function EraserSection(): JSX.Element {
           type="button"
           disabled={disabled || strokeCount === 0}
           onClick={clearEraserStrokes}
-          className="rounded-lg border border-red-200 bg-red-50 px-2 py-1.5 text-xs text-red-600 disabled:opacity-40"
+          className="btn btn--sm btn--danger"
         >
           清空擦除
         </button>

@@ -15,13 +15,27 @@ export function BrushSection(): JSX.Element {
   const disabled = !selectedId || !config;
 
   return (
-    <section className="space-y-3">
-      <span className="text-[10px] text-[var(--text-secondary)]">
-        {config?.brushStrokes.length ?? 0} 笔
+    <div className="flex flex-col gap-2.5">
+      <span className="hint">
+        已绘制 {config?.brushStrokes.length ?? 0} 笔
       </span>
       <div className="grid grid-cols-2 gap-2">
-        <button type="button" disabled={disabled} onClick={() => { updateBrushSettings({ mode: "paint" }); setPreviewTool(tool === "brush" ? "none" : "brush"); }} className={`rounded-lg border px-3 py-2 text-xs ${tool === "brush" ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--border-hairline)] bg-white/40"}`}>画笔</button>
-        <button type="button" disabled={disabled} onClick={() => { updateBrushSettings({ mode: "erase" }); setPreviewTool(tool === "eraser" ? "none" : "eraser"); }} className={`rounded-lg border px-3 py-2 text-xs ${tool === "eraser" ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--border-hairline)] bg-white/40"}`}>涂抹擦除</button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => { updateBrushSettings({ mode: "paint" }); setPreviewTool(tool === "brush" ? "none" : "brush"); }}
+          className={`btn btn--sm${tool === "brush" ? " btn--active" : ""}`}
+        >
+          画笔
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => { updateBrushSettings({ mode: "erase" }); setPreviewTool(tool === "eraser" ? "none" : "eraser"); }}
+          className={`btn btn--sm${tool === "eraser" ? " btn--active" : ""}`}
+        >
+          涂抹擦除
+        </button>
       </div>
       <ColorField
         id="brush-color"
@@ -41,16 +55,24 @@ export function BrushSection(): JSX.Element {
         disabled={disabled}
         onChange={(size) => updateBrushSettings({ size })}
       />
-      <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-        <input type="checkbox" checked={config?.brushClipToMask ?? true} disabled={disabled} onChange={(event) => updateBrushSettings({ clipToMask: event.target.checked })} />
-        笔迹不超出当前图标外围
-      </label>
+      <div className="field">
+        <span className="field__label">裁切到图标</span>
+        <div className="field__controls justify-end">
+          <input
+            type="checkbox"
+            checked={config?.brushClipToMask ?? true}
+            disabled={disabled}
+            aria-label="笔迹不超出当前图标外围"
+            onChange={(event) => updateBrushSettings({ clipToMask: event.target.checked })}
+          />
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
           disabled={disabled || (config?.brushStrokes.length ?? 0) === 0}
           onClick={undoBrushStroke}
-          className="rounded-lg border border-[var(--border-hairline)] bg-white/40 px-2 py-1.5 text-xs disabled:opacity-40"
+          className="btn btn--sm"
         >
           撤销一笔
         </button>
@@ -58,14 +80,14 @@ export function BrushSection(): JSX.Element {
           type="button"
           disabled={disabled || (config?.brushStrokes.length ?? 0) === 0}
           onClick={clearBrushStrokes}
-          className="rounded-lg border border-red-200 bg-red-50 px-2 py-1.5 text-xs text-red-600 disabled:opacity-40"
+          className="btn btn--sm btn--danger"
         >
           清空画笔
         </button>
       </div>
-      <p className="text-[11px] leading-4 text-[var(--text-secondary)]">
+      <p className="hint">
         画笔和擦除笔迹属于当前图标，并会进入预览、PNG 和最终 ICO。
       </p>
-    </section>
+    </div>
   );
 }

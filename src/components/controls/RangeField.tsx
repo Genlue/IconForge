@@ -13,6 +13,7 @@ export interface RangeFieldProps {
   onChange(value: number): void;
 }
 
+/** 检查器滑杆行：标签列固定宽度，滑杆与数值输入右对齐成列。 */
 export function RangeField(props: RangeFieldProps): JSX.Element {
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,15 +31,11 @@ export function RangeField(props: RangeFieldProps): JSX.Element {
   );
 
   return (
-    <div className={`space-y-1 ${props.disabled ? "opacity-40" : ""}`}>
-      <label
-        htmlFor={props.id}
-        className="flex items-center justify-between gap-2 text-xs text-[var(--text-secondary)]"
-      >
-        <span className="min-w-0 truncate">{props.label}</span>
-        <span className="shrink-0 tabular-nums">{props.value}{props.unit ?? ""}</span>
+    <div className={`field${props.disabled ? " field--disabled" : ""}`}>
+      <label htmlFor={props.id} className="field__label" title={props.label}>
+        {props.label}
       </label>
-      <div className="flex items-center gap-2">
+      <div className="field__controls">
         <input
           id={props.id}
           type="range"
@@ -48,7 +45,6 @@ export function RangeField(props: RangeFieldProps): JSX.Element {
           value={props.value}
           disabled={props.disabled}
           onChange={handleChange}
-          className="min-w-0 flex-1"
         />
         <input
           type="number"
@@ -58,7 +54,8 @@ export function RangeField(props: RangeFieldProps): JSX.Element {
           value={props.value}
           disabled={props.disabled}
           onChange={handleNumberInput}
-          className="w-[4.2rem] shrink-0 rounded-md border border-[var(--border-hairline)] bg-white/40 px-1 py-0.5 text-right text-[11px] leading-none text-[var(--text-primary)]"
+          aria-label={`${props.label}数值`}
+          className="num-input"
         />
       </div>
     </div>

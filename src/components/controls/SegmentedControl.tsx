@@ -10,19 +10,20 @@ export interface SegmentedControlProps<T extends string> {
   onChange(value: T): void;
 }
 
+/** macOS 风格分段控件：灰色凹槽内浮起的活动段。 */
 export function SegmentedControl<T extends string>(
   props: SegmentedControlProps<T>,
 ): JSX.Element {
   return (
-    <div className="flex overflow-hidden rounded-lg border border-[var(--border-hairline)] bg-white/40">
+    <div className="segmented" role="group">
       {props.options.map((opt) => (
         <button
           key={opt.value}
+          type="button"
+          aria-pressed={props.value === opt.value}
           onClick={() => props.onChange(opt.value)}
-          className={`min-w-0 flex-1 truncate px-1.5 py-1 text-xs transition-colors ${
-            props.value === opt.value
-              ? "bg-[var(--accent)] text-white"
-              : "text-[var(--text-secondary)] hover:bg-white/60"
+          className={`segmented__segment${
+            props.value === opt.value ? " segmented__segment--active" : ""
           }`}
         >
           {opt.label}

@@ -12,7 +12,7 @@ export function StrokeSection(props: StrokeSectionProps): JSX.Element {
   const showColor = value.width > 0;
 
   return (
-    <section className="space-y-3">
+    <div className="flex flex-col gap-2.5">
       <RangeField
         id="stroke-width"
         label="宽度"
@@ -32,6 +32,6 @@ export function StrokeSection(props: StrokeSectionProps): JSX.Element {
           onChange={(v) => onChange({ color: v })}
         />
       </div>
-    </section>
+    </div>
   );
 }

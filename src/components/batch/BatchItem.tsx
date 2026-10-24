@@ -16,27 +16,36 @@ function BatchItemInner(props: BatchItemProps): JSX.Element {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={() => props.onSelect(props.item.id)}
-      className={`relative flex h-[132px] w-[132px] shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border transition-colors ${
-        props.selected
-          ? "border-[var(--accent)] bg-[var(--accent)]/10"
-          : "border-[var(--border-hairline)] bg-white/40 hover:bg-white/60"
-      }`}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          props.onSelect(props.item.id);
+        }
+      }}
+      title={props.item.displayName}
+      className={`source-row${props.selected ? " source-row--selected" : ""}`}
     >
       <img
         src={thumbSrc}
-        alt={props.item.displayName}
-        className="h-[72px] w-[72px] rounded object-contain"
+        alt=""
+        className="h-6 w-6 shrink-0 rounded-[5px] object-contain"
       />
-      <span className="max-w-[120px] truncate text-[10px] text-[var(--text-secondary)]">
-        {props.item.displayName}
+      <span className="source-row__name">{props.item.displayName}</span>
+      <span className="source-row__meta">
+        {props.item.sourceWidth}×{props.item.sourceHeight}
       </span>
       <button
+        type="button"
+        aria-label={`移除 ${props.item.displayName}`}
+        title={`移除 ${props.item.displayName}`}
         onClick={(e) => {
           e.stopPropagation();
           props.onRemove(props.item.id);
         }}
-        className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/10 text-[10px] text-[var(--text-secondary)] hover:bg-black/20"
+        className="source-row__remove"
       >
         ×
       </button>

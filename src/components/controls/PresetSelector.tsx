@@ -17,9 +17,8 @@ interface MenuState {
 }
 
 /**
- * Built-in presets render in the neutral chip style; user-created presets use
- * a violet accent so they are easy to tell apart. Right-clicking a custom
- * preset opens a context menu with rename / delete.
+ * 预设以检查器选择列表呈现：选中行使用唯一的强调色填充，
+ * 自定义预设带「自定」徽标；右键自定义预设弹出重命名 / 删除菜单。
  */
 export function PresetSelector(props: PresetSelectorProps): JSX.Element {
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -48,7 +47,14 @@ export function PresetSelector(props: PresetSelectorProps): JSX.Element {
 
   const openMenu = (event: React.MouseEvent, preset: PresetDefinition) => {
     event.preventDefault();
-    setMenu({ preset, x: event.clientX, y: event.clientY });
+    // 贴边时向内收，避免菜单超出窗口被裁切
+    const MENU_W = 148;
+    const MENU_H = 76;
+    setMenu({
+      preset,
+      x: Math.min(event.clientX, window.innerWidth - MENU_W - 8),
+      y: Math.min(event.clientY, window.innerHeight - MENU_H - 8),
+    });
   };
 
   const startRename = (preset: PresetDefinition) => {
@@ -63,14 +69,11 @@ export function PresetSelector(props: PresetSelectorProps): JSX.Element {
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-2">
+      <div className="preset-list">
         {props.presets.map((p) =>
           renamingId === p.id ? (
-            <div
-              key={p.id}
-              className="flex items-center gap-1 rounded-lg border border-[var(--accent)] bg-[var(--surface-control)] px-1 py-0.5"
-            >
+            <div key={p.id} className="preset-rename">
               <input
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
@@ -78,13 +81,12 @@ export function PresetSelector(props: PresetSelectorProps): JSX.Element {
                   if (e.key === "Enter") commitRename(p);
                   if (e.key === "Escape") setRenamingId(null);
                 }}
-                className="w-28 rounded border border-[var(--border-hairline)] bg-[var(--surface-input)] px-1.5 py-0.5 text-xs text-[var(--text-primary)]"
                 autoFocus
               />
               <button
                 type="button"
                 onClick={() => commitRename(p)}
-                className="rounded bg-[var(--accent)] px-1.5 py-0.5 text-[10px] text-white"
+                className="btn btn--sm"
               >
                 确定
               </button>
@@ -92,22 +94,16 @@ export function PresetSelector(props: PresetSelectorProps): JSX.Element {
           ) : (
             <button
               key={p.id}
+              type="button"
               onClick={() => props.onSelect(p.id)}
               onContextMenu={(e) => {
                 if (p.custom && props.onRename && props.onDelete) openMenu(e, p);
               }}
               title={p.custom ? `${p.description}（右键管理）` : p.description}
-              className={`max-w-[180px] truncate rounded-lg px-3 py-1.5 text-xs transition-colors ${
-                p.custom
-                  ? props.activePresetId === p.id
-                    ? "bg-violet-500 text-white"
-                    : "border border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100"
-                  : props.activePresetId === p.id
-                    ? "bg-[var(--accent)] text-white"
-                    : "bg-white/50 text-[var(--text-primary)] hover:bg-white/80"
-              }`}
+              className={`preset-row${props.activePresetId === p.id ? " preset-row--active" : ""}`}
             >
-              {p.name}
+              <span className="preset-row__name">{p.name}</span>
+              {p.custom && <span className="preset-row__badge">自定</span>}
             </button>
           ),
         )}
@@ -118,14 +114,14 @@ export function PresetSelector(props: PresetSelectorProps): JSX.Element {
           <div
             ref={menuRef}
             role="menu"
-            className="fixed z-[100] min-w-[9rem] overflow-hidden rounded-lg border border-[var(--border-hairline)] bg-[var(--surface-overlay)] shadow-[var(--shadow-panel)]"
+            className="context-menu fixed z-[100]"
             style={{ left: menu.x, top: menu.y }}
           >
             <button
               type="button"
               role="menuitem"
               onClick={() => startRename(menu.preset)}
-              className="block w-full px-3 py-2 text-left text-xs text-[var(--text-primary)] hover:bg-[var(--surface-control-hover)]"
+              className="context-menu__item"
             >
               重命名…
             </button>
@@ -136,7 +132,7 @@ export function PresetSelector(props: PresetSelectorProps): JSX.Element {
                 props.onDelete?.(menu.preset.id);
                 setMenu(null);
               }}
-              className="block w-full px-3 py-2 text-left text-xs text-[var(--danger-text)] hover:bg-[var(--danger-surface)]"
+              className="context-menu__item context-menu__item--danger"
             >
               删除
             </button>
