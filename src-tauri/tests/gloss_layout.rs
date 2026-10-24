@@ -82,7 +82,9 @@ mod tests {
     }
 
     fn render_gloss() -> RgbaImage {
-        let source = RgbaImage::new(1, 1);
+        // A full-canvas gray source: the foreground fills the shape mask, so
+        // the gloss has real icon pixels to light along the edge band.
+        let source = RgbaImage::from_pixel(256, 256, image::Rgba([100, 100, 100, 255]));
         render_master(&source, &validate_config(&gloss_config()).unwrap()).unwrap()
     }
 
@@ -91,28 +93,41 @@ mod tests {
     }
 
     #[test]
-    fn gloss_base_ring_edges() {
+    fn gloss_unlit_edges_shade_down() {
         let img = render_gloss();
-        // The base ring must exist on the edges outside the highlight spans:
-        // bottom edge, right edge, and the corner arcs that flank the
-        // top-left highlight (bottom-left and top-right roundings).
-        assert_eq!(sample(&img, 128, 238), [128, 128, 128, 255]);
-        assert_eq!(sample(&img, 238, 128), [128, 128, 128, 255]);
-        assert_eq!(sample(&img, 32, 224), [128, 128, 128, 255]);
-        assert_eq!(sample(&img, 214, 24), [128, 128, 128, 255]);
+        // Outside the two highlight spans the base tone multiplies the
+        // original pixels down: bottom edge, right edge, and the corner arcs
+        // flanking the top-left highlight (bottom-left and top-right
+        // roundings) all end up darker than the 100-gray source instead of
+        // showing a painted ring.
+        for (x, y) in [(128, 238), (238, 128), (32, 224), (214, 24)] {
+            let p = sample(&img, x, y);
+            assert!(
+                p[0] < 90,
+                "unlit edge ({x},{y}) should shade below the source gray, got {}",
+                p[0]
+            );
+        }
     }
 
     #[test]
     fn gloss_top_left_highlight() {
         let img = render_gloss();
-        // The top-left corner arc peaks at full strength...
-        assert_eq!(sample(&img, 32, 32), [255, 255, 255, 255]);
-        // ...while the straight left/top edges sit slightly below it, and both
-        // ends fade out into the base ring (samples here are still clearly
-        // above the 128 gray base).
+        // The top-left corner arc peaks at full strength (the screen blend
+        // pushes the gray source to near white)...
+        assert!(
+            sample(&img, 32, 32)[0] > 250,
+            "corner should peak near white, got {}",
+            sample(&img, 32, 32)[0]
+        );
+        // ...while the straight left/top edges sit slightly below it.
         for (x, y) in [(18, 128), (128, 18)] {
             let p = sample(&img, x, y);
-            assert!(p[0] > 235 && p[0] < 255, "edge ({x},{y}) should be near 0.85 opacity, got {}", p[0]);
+            assert!(
+                p[0] > 200 && p[0] < 250,
+                "edge ({x},{y}) should be brightened below the peak, got {}",
+                p[0]
+            );
         }
     }
 
@@ -121,25 +136,37 @@ mod tests {
         let img = render_gloss();
         // Near the upper end of the bottom-left rounding (start of the gloss)
         // and the left end of the top-right rounding (end of the gloss) the
-        // highlight must transition gradually back to the edge base color.
+        // highlight must fall off gradually toward the shaded edge.
         let start = sample(&img, 18, 186);
-        assert!(start[0] < 160, "gloss start should be close to the base color, got {}", start[0]);
+        assert!(
+            start[0] < 160,
+            "gloss start should fade toward the shaded edge, got {}",
+            start[0]
+        );
         let mid_fade = sample(&img, 18, 178);
         assert!(
-            mid_fade[0] > 135 && mid_fade[0] < 235,
-            "gloss start should show a gradient in between, got {}",
-            mid_fade[0]
+            mid_fade[0] > start[0] && mid_fade[0] < 235,
+            "gloss start should show a gradient in between, got {} (start {})",
+            mid_fade[0],
+            start[0]
         );
         let end = sample(&img, 186, 18);
-        assert!(end[0] < 160, "gloss end should be close to the base color, got {}", end[0]);
+        assert!(
+            end[0] < 160,
+            "gloss end should fade toward the shaded edge, got {}",
+            end[0]
+        );
     }
 
     #[test]
     fn gloss_bottom_right_highlight_fades_in_and_out() {
         let img = render_gloss();
-        // The bottom-right rounding arc fades in from the edge base color at
-        // its left side (bottom edge end)...
-        assert!(sample(&img, 188, 237)[0] < 170, "arc start should fade in from the base color");
+        // The bottom-right rounding arc brightens from the shaded bottom
+        // edge...
+        assert!(
+            sample(&img, 188, 237)[0] < 170,
+            "arc start should stay in the shaded band"
+        );
         assert!(
             sample(&img, 207, 233)[0] > 180,
             "arc should brighten towards the middle"
@@ -148,12 +175,36 @@ mod tests {
         // middle...
         let mid = sample(&img, 223, 223);
         assert!(
-            mid[0] > 235 && mid[0] < 255,
+            mid[0] > 200 && mid[0] < 250,
             "arc middle should match the edge level, got {}",
             mid[0]
         );
-        // ...and fades back out to the base color at its upper side (right
+        // ...and fades back out to the shaded band at its upper side (right
         // edge end).
-        assert!(sample(&img, 238, 188)[0] < 170, "arc end should fade back to the base color");
+        assert!(
+            sample(&img, 238, 188)[0] < 170,
+            "arc end should fade back to the shaded band"
+        );
+    }
+
+    #[test]
+    fn gloss_needs_underlying_content() {
+        // The gloss is a mask over the original icon, not a painted ring: with
+        // a small foreground and no backplate the edge band has no icon
+        // pixels, so it must stay fully transparent instead of showing a base
+        // ring.
+        let mut config = gloss_config();
+        config.foreground_scale_percent = 50.0;
+        let source = RgbaImage::from_pixel(256, 256, image::Rgba([100, 100, 100, 255]));
+        let img = render_master(&source, &validate_config(&config).unwrap()).unwrap();
+        for (x, y) in [(18, 128), (128, 18), (128, 238), (238, 128), (32, 32)] {
+            assert_eq!(
+                sample(&img, x, y)[3],
+                0,
+                "edge band ({x},{y}) has no icon pixels and must stay transparent"
+            );
+        }
+        // The center keeps the original pixels untouched.
+        assert_eq!(sample(&img, 128, 128), [100, 100, 100, 255]);
     }
 }

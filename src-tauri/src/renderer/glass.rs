@@ -81,9 +81,9 @@ pub fn render_glass(
         over(&mut body, super::stroke::render_inner_stroke(&mask, config));
     }
 
-    // Edge gloss: classic (base ring + directional highlights).
+    // Edge gloss: classic (mask-based lighting over the composed body).
     if config.gloss_enabled && config.gloss_width > 0.0 && config.gloss_strength > 0.0 {
-        over(&mut body, super::gloss::render_edge_gloss(&mask, config)?);
+        super::gloss::apply_edge_gloss(&mut body, &mask, config)?;
     }
 
     // Outer shadow: classic, from the user's shadow parameters.

@@ -86,6 +86,12 @@ mod tests {
         render_master(&source, &validate_config(&glass_config()).unwrap()).unwrap()
     }
 
+    fn render_glass_with_gloss(enabled: bool) -> RgbaImage {
+        let mut config = glass_config();
+        config.gloss.enabled = enabled;
+        render_master(&RgbaImage::new(1, 1), &validate_config(&config).unwrap()).unwrap()
+    }
+
     fn sample(img: &RgbaImage, x: u32, y: u32) -> [u8; 4] {
         img.get_pixel(x, y).0
     }
@@ -111,27 +117,46 @@ mod tests {
 
     #[test]
     fn glass_plate_has_edge_gloss() {
-        // The edge gloss is the classic one, driven by the user's gloss
-        // parameters on the classic shape mask: top/left highlight, base ring
-        // elsewhere.
+        // The edge gloss is a mask-based lighting pass over the composed
+        // plate: the left/top edges and the bottom-right corner arc receive
+        // the screen-blended highlight, the unlit remainder of the band is
+        // multiplied down by the base tone, and everything outside the edge
+        // band — including the plate center — stays untouched.
         let img = render_glass();
+        let base = render_glass_with_gloss(false);
+
         let left = sample(&img, 18, 128);
+        let left_base = sample(&base, 18, 128);
         assert!(
-            left[0] > 235,
-            "left plate edge should show the gloss highlight, got {}",
-            left[0]
+            left[0] > left_base[0] + 60,
+            "left plate edge should be brightened by the gloss highlight, got {} vs base {}",
+            left[0],
+            left_base[0]
         );
-        let bottom_edge = sample(&img, 128, 238);
-        assert!(
-            bottom_edge[0] >= 165 && bottom_edge[0] <= 225,
-            "bottom edge should show the base ring, got {}",
-            bottom_edge[0]
-        );
+
         let corner = sample(&img, 32, 32);
+        let corner_base = sample(&base, 32, 32);
         assert!(
-            corner[0] > 235,
-            "plate corner should show the gloss highlight, got {}",
-            corner[0]
+            corner[0] > corner_base[0] + 80,
+            "plate corner should get the full-strength highlight, got {} vs base {}",
+            corner[0],
+            corner_base[0]
+        );
+
+        let bottom_edge = sample(&img, 128, 238);
+        let bottom_base = sample(&base, 128, 238);
+        assert!(
+            bottom_edge[0] < bottom_base[0] - 10,
+            "unlit bottom edge should be shaded down by the base tone, got {} vs base {}",
+            bottom_edge[0],
+            bottom_base[0]
+        );
+
+        let center = sample(&img, 128, 128);
+        let center_base = sample(&base, 128, 128);
+        assert_eq!(
+            center, center_base,
+            "plate center is outside the gloss band and must stay untouched"
         );
     }
 

@@ -301,7 +301,7 @@ pub fn render_master(
     }
 
     if config.gloss_enabled && config.gloss_width > 0.0 && config.gloss_strength > 0.0 {
-        over(&mut body, super::gloss::render_edge_gloss(&mask, config)?);
+        super::gloss::apply_edge_gloss(&mut body, &mask, config)?;
     }
 
     // Determine silhouette for shadow

@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use super::color::parse_hex_rgba;
-use super::composite::{over, LinearPremultipliedImage};
+use super::composite::LinearPremultipliedImage;
 use super::mask::{generate_inset_shape_mask, AlphaMask};
 use super::pipeline::ValidatedRenderConfig;
 use crate::domain::config::IconShape;
@@ -81,8 +81,8 @@ pub(crate) fn bottom_right_weight(u: f32) -> f32 {
 /// `(a1, a2, b1, b2)`, plus the shared opacity profile.
 ///
 /// Top-left highlight: the boundary arc from the upper end of the bottom-left
-/// rounding, clockwise along the left edge and top edge, to the left end of the
-/// top-right rounding (region A, angular sweep `a1 -> a2`).
+/// rounding, clockwise along the left edge and top edge, to the left end of
+/// the top-right rounding (region A, angular sweep `a1 -> a2`).
 ///
 /// Bottom-right highlight: the bottom-right rounding arc from its left side
 /// (bottom edge end) to its upper side (right edge end), region B = the angle
@@ -119,20 +119,24 @@ fn rounded_rect_regions(config: &ValidatedRenderConfig, r: f32) -> ((f32, f32, f
     ((a1, a2, b1, b2), GlossProfile { k1, k2 })
 }
 
-/// Edge gloss: a user-colored ring along the whole icon edge, with a light
-/// highlight overlaid on top of it along the left/top edges (region A) and on
-/// the bottom-right corner arc (region B). The highlight peaks at the corner
-/// arcs, sits slightly lower along the straight edges, and fades to
-/// transparent at the ends of both regions so the edge base color shows
-/// through with a gradual transition.
-pub fn render_edge_gloss(
+/// Edge gloss: a mask-based lighting pass applied directly on top of the
+/// composed icon. The band between the shape boundary and its inset
+/// (optionally feathered) forms the mask; inside it the directional highlight
+/// screen-blends the light color onto the underlying pixels (left/top edges,
+/// region A, and the bottom-right corner arc, region B), while the remaining
+/// band multiply-blends the base color as a shading tone. Both operations
+/// modulate the original icon instead of painting an opaque ring, so the
+/// artwork stays fully visible through the effect and transparent areas are
+/// left untouched.
+pub fn apply_edge_gloss(
+    body: &mut LinearPremultipliedImage,
     mask: &AlphaMask,
     config: &ValidatedRenderConfig,
-) -> Result<LinearPremultipliedImage, AppError> {
+) -> Result<(), AppError> {
     let size = 256u32;
     let inset = generate_inset_shape_mask(size, config, config.canvas_inset + config.gloss_width);
     // Softening the inner boundary of the gloss band smooths the transition
-    // between the edge highlight and the icon body below it.
+    // between the edge lighting and the icon body below it.
     let inset = if config.gloss_feather_blur > 0.0 {
         super::shadow::gaussian_blur_alpha(&inset, size, size, config.gloss_feather_blur)
     } else {
@@ -144,8 +148,6 @@ pub fn render_edge_gloss(
     let span_a = (a2 - a1).rem_euclid(std::f32::consts::TAU);
     let span_b = b1 - b2;
 
-    let mut result = LinearPremultipliedImage::transparent(size, size);
-    let mut highlight = LinearPremultipliedImage::transparent(size, size);
     for y in 0..size {
         for x in 0..size {
             let idx = (y * size + x) as usize;
@@ -153,9 +155,12 @@ pub fn render_edge_gloss(
             if edge <= 0.0 {
                 continue;
             }
-            let a = base.a * edge * config.gloss_strength;
-            result.data[idx] = [base.r * a, base.g * a, base.b * a, a];
-
+            let dst_a = body.data[idx][3];
+            if dst_a <= 0.0 {
+                // The gloss is a mask over the original icon: nothing to light
+                // where the icon is fully transparent.
+                continue;
+            }
             let px = x as f32 + 0.5;
             let py = y as f32 + 0.5;
             let theta = (py - 128.0).atan2(px - 128.0);
@@ -165,15 +170,43 @@ pub fn render_edge_gloss(
             } else if span_b > 0.0 && theta >= b2 && theta <= b1 {
                 bottom_right_weight((b1 - theta) / span_b)
             } else {
-                continue;
+                0.0
             };
-            let alpha = light.a * edge * weight * config.gloss_strength;
-            if alpha <= 0.0 {
+            if weight <= 0.0 && base.a <= 0.0 {
                 continue;
             }
-            highlight.data[idx] = [light.r * alpha, light.g * alpha, light.b * alpha, alpha];
+
+            // Blend in straight alpha, then re-premultiply.
+            let dst_r = body.data[idx][0] / dst_a;
+            let dst_g = body.data[idx][1] / dst_a;
+            let dst_b = body.data[idx][2] / dst_a;
+            let mut out = [dst_r, dst_g, dst_b];
+
+            // Directional highlight: screen-blend the light color so the
+            // existing pixels brighten instead of being covered.
+            if weight > 0.0 {
+                let t = (light.a * weight * config.gloss_strength * edge).clamp(0.0, 1.0);
+                if t > 0.0 {
+                    out[0] = 1.0 - (1.0 - out[0]) * (1.0 - light.r * t);
+                    out[1] = 1.0 - (1.0 - out[1]) * (1.0 - light.g * t);
+                    out[2] = 1.0 - (1.0 - out[2]) * (1.0 - light.b * t);
+                }
+            }
+
+            // Base tone: multiply-blend on the unlit remainder of the band so
+            // the shading darkens the original pixels rather than painting
+            // over them.
+            let shade = (base.a * (1.0 - weight) * config.gloss_strength * edge).clamp(0.0, 1.0);
+            if shade > 0.0 {
+                out[0] *= 1.0 - shade * (1.0 - base.r);
+                out[1] *= 1.0 - shade * (1.0 - base.g);
+                out[2] *= 1.0 - shade * (1.0 - base.b);
+            }
+
+            body.data[idx][0] = out[0].min(1.0) * dst_a;
+            body.data[idx][1] = out[1].min(1.0) * dst_a;
+            body.data[idx][2] = out[2].min(1.0) * dst_a;
         }
     }
-    over(&mut result, highlight);
-    Ok(result)
+    Ok(())
 }

@@ -215,9 +215,8 @@ pub fn render_hq(
         mask.clone()
     };
     let shadow = cast_shadow(&shadow_src, size, offset, blur, cfg.shadow_opacity, cfg.shadow_fade);
-    let edge_gloss = render_edge_gloss(&mask, size, cfg);
     over(&mut canvas, &gloss);
-    over(&mut canvas, &edge_gloss);
+    apply_edge_gloss(&mut canvas, &mask, size, cfg);
     over(&mut canvas, &shadow);
     over(&mut canvas, &icon_layer);
 
@@ -619,17 +618,18 @@ fn gloss_region_angles(size: usize, shape: HqPanelShape, corner: f32) -> ((f32, 
     }
 }
 
-/// Edge gloss: a base-colored ring along the whole panel edge, with a light
-/// highlight overlaid on top of it along the left/top edges (region A) and on
-/// the bottom-right corner arc (region B). The highlight peaks at the corner
-/// arcs, sits slightly lower along the straight edges, and fades to
-/// transparent at the ends of both regions so the edge base color shows
-/// through with a gradual transition. Rendered in straight sRGB so it can be
-/// composited onto the adaptive tile.
-fn render_edge_gloss(mask: &[f32], size: usize, cfg: &ValidatedHqRenderConfig) -> Vec<[f32; 4]> {
-    let mut out = vec![[0.0f32; 4]; size * size];
+/// Edge gloss: a mask-based lighting pass applied directly on top of the
+/// adaptive tile. The band between the panel edge and its eroded/feathered
+/// inset forms the mask; inside it the directional highlight screen-blends the
+/// light color onto the underlying pixels (left/top edges, region A, and the
+/// bottom-right corner arc, region B), while the remaining band
+/// multiply-blends the base color as a shading tone. Both operations modulate
+/// the existing tile instead of painting an opaque ring, and transparent
+/// areas are left untouched. Runs in straight sRGB to match the reference
+/// iconmask.py implementation.
+fn apply_edge_gloss(canvas: &mut [[f32; 4]], mask: &[f32], size: usize, cfg: &ValidatedHqRenderConfig) {
     if !cfg.edge_gloss_enabled || cfg.edge_gloss_width <= 0.0 || cfg.edge_gloss_strength <= 0.0 {
-        return out;
+        return;
     }
     let base_inset = erode_mask(mask, size, cfg.edge_gloss_width.ceil() as usize);
     let inset = if cfg.edge_gloss_feather_blur > 0.0 {
@@ -644,7 +644,6 @@ fn render_edge_gloss(mask: &[f32], size: usize, cfg: &ValidatedHqRenderConfig) -
     let span_b = b1 - b2;
     let c = (size as f32 - 1.0) / 2.0;
 
-    let mut highlight = vec![[0.0f32; 4]; size * size];
     for y in 0..size {
         for x in 0..size {
             let idx = y * size + x;
@@ -652,11 +651,11 @@ fn render_edge_gloss(mask: &[f32], size: usize, cfg: &ValidatedHqRenderConfig) -
             if edge <= 0.0 {
                 continue;
             }
-            let a = (base[3] * edge * cfg.edge_gloss_strength).clamp(0.0, 1.0);
-            if a > 0.0 {
-                out[idx] = [base[0], base[1], base[2], a];
+            if canvas[idx][3] <= 0.0 {
+                // The gloss is a mask over the existing content: nothing to
+                // light where the tile is fully transparent.
+                continue;
             }
-
             let px = x as f32 + 0.5;
             let py = y as f32 + 0.5;
             let theta = (py - c).atan2(px - c);
@@ -666,17 +665,40 @@ fn render_edge_gloss(mask: &[f32], size: usize, cfg: &ValidatedHqRenderConfig) -
             } else if span_b > 0.0 && theta >= b2 && theta <= b1 {
                 super::gloss::bottom_right_weight((b1 - theta) / span_b)
             } else {
-                continue;
+                0.0
             };
-            let alpha = (light[3] * edge * weight * cfg.edge_gloss_strength).clamp(0.0, 1.0);
-            if alpha <= 0.0 {
+            if weight <= 0.0 && base[3] <= 0.0 {
                 continue;
             }
-            highlight[idx] = [light[0], light[1], light[2], alpha];
+
+            let mut out = [canvas[idx][0], canvas[idx][1], canvas[idx][2]];
+
+            // Directional highlight: screen-blend the light color so the
+            // existing pixels brighten instead of being covered.
+            if weight > 0.0 {
+                let t = (light[3] * weight * cfg.edge_gloss_strength * edge).clamp(0.0, 1.0);
+                if t > 0.0 {
+                    out[0] = 1.0 - (1.0 - out[0]) * (1.0 - light[0] * t);
+                    out[1] = 1.0 - (1.0 - out[1]) * (1.0 - light[1] * t);
+                    out[2] = 1.0 - (1.0 - out[2]) * (1.0 - light[2] * t);
+                }
+            }
+
+            // Base tone: multiply-blend on the unlit remainder of the band so
+            // the shading darkens the original pixels rather than painting
+            // over them.
+            let shade = (base[3] * (1.0 - weight) * cfg.edge_gloss_strength * edge).clamp(0.0, 1.0);
+            if shade > 0.0 {
+                out[0] *= 1.0 - shade * (1.0 - base[0]);
+                out[1] *= 1.0 - shade * (1.0 - base[1]);
+                out[2] *= 1.0 - shade * (1.0 - base[2]);
+            }
+
+            canvas[idx][0] = out[0].clamp(0.0, 1.0);
+            canvas[idx][1] = out[1].clamp(0.0, 1.0);
+            canvas[idx][2] = out[2].clamp(0.0, 1.0);
         }
     }
-    over(&mut out, &highlight);
-    out
 }
 
 /// Rectangular erosion of a coverage mask (two separable min passes), used to
