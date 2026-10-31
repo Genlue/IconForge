@@ -28,12 +28,8 @@ pub struct ValidatedHqRenderConfig {
     pub shadow_fade: f32,
     pub shadow_mode: HqShadowMode,
     // Classic edge gloss, applied on top of the adaptive tile when enabled.
-    pub edge_gloss_enabled: bool,
-    pub edge_gloss_width: f32,
-    pub edge_gloss_strength: f32,
+    pub edge_gloss: Option<super::gloss::EdgeGlossParams>,
     pub edge_gloss_light: [f32; 4],
-    pub edge_gloss_base: [f32; 4],
-    pub edge_gloss_feather_blur: f32,
 }
 
 pub fn validate_hq(config: &RenderConfig) -> Result<ValidatedHqRenderConfig, AppError> {
@@ -75,12 +71,8 @@ pub fn validate_hq(config: &RenderConfig) -> Result<ValidatedHqRenderConfig, App
         )?,
         shadow_fade: check(hq.shadow_fade, 0.0, 1.0, "hq shadowFade")?,
         shadow_mode: hq.shadow_mode,
-        edge_gloss_enabled: config.gloss.enabled,
-        edge_gloss_width: check(config.gloss.width, 0.0, 32.0, "gloss width")?,
-        edge_gloss_strength: check(config.gloss.strength, 0.0, 1.0, "gloss strength")?,
+        edge_gloss: super::gloss::validate_edge_gloss(&config.gloss)?,
         edge_gloss_light: super::color::parse_hex_srgb_rgba(&config.gloss.light_color)?,
-        edge_gloss_base: super::color::parse_hex_srgb_rgba(&config.gloss.base_color)?,
-        edge_gloss_feather_blur: check(config.gloss.feather_blur, 0.0, 32.0, "gloss featherBlur")?,
     })
 }
 
@@ -583,155 +575,32 @@ fn gloss_layer(size: usize, strength: f32) -> Vec<[f32; 4]> {
     out
 }
 
-/// Angular spans (radians, y-down screen coordinates where the angle grows
-/// clockwise) of the two highlight regions of the HQ panel, measured from the
-/// panel center: `(a1, a2, b1, b2)`, plus the shared opacity profile.
-///
-/// Top-left highlight spans clockwise from the upper end of the bottom-left
-/// rounding along the left/top edges to the left end of the top-right rounding
-/// (region A, sweep `a1 -> a2`); the bottom-right highlight covers the
-/// bottom-right rounding from its left side (bottom edge end) to its upper
-/// side (right edge end), region B = angle interval `[b2, b1]`.
-fn gloss_region_angles(size: usize, shape: HqPanelShape, corner: f32) -> ((f32, f32, f32, f32), super::gloss::GlossProfile) {
-    let no_edges = super::gloss::GlossProfile { k1: 0.0, k2: 1.0 };
-    match shape {
-        HqPanelShape::Circle | HqPanelShape::Squircle => (
-            (std::f32::consts::PI, -std::f32::consts::PI / 2.0, std::f32::consts::PI / 2.0, 0.0),
-            no_edges,
-        ),
-        HqPanelShape::Rect => {
-            let c = (size as f32 - 1.0) / 2.0;
-            let rad = corner * size as f32;
-            let x0 = rad;
-            let x1 = size as f32 - rad;
-            let y0 = rad;
-            let y1 = size as f32 - rad;
-            let a1 = (y1 - rad - c).atan2(x0 - c);
-            let a2 = (y0 - c).atan2(x1 - rad - c);
-            let b1 = (y1 - c).atan2(x1 - rad - c);
-            let b2 = (y1 - rad - c).atan2(x1 - c);
-            let span_a = (a2 - a1).rem_euclid(std::f32::consts::TAU);
-            let k1 = ((y0 + rad - c).atan2(x0 - c) - a1).rem_euclid(std::f32::consts::TAU) / span_a;
-            let k2 = ((y0 - c).atan2(x0 + rad - c) - a1).rem_euclid(std::f32::consts::TAU) / span_a;
-            ((a1, a2, b1, b2), super::gloss::GlossProfile { k1, k2 })
-        }
-    }
-}
-
-/// Edge gloss: a mask-based lighting pass applied directly on top of the
-/// adaptive tile. The band between the panel edge and its eroded/feathered
-/// inset forms the mask; inside it the directional highlight screen-blends the
-/// light color onto the underlying pixels (left/top edges, region A, and the
-/// bottom-right corner arc, region B), while the remaining band
-/// multiply-blends the base color as a shading tone. Both operations modulate
-/// the existing tile instead of painting an opaque ring, and transparent
-/// areas are left untouched. Runs in straight sRGB to match the reference
-/// iconmask.py implementation.
+/// Edge gloss: a screen-blend rim light over the adaptive tile, using the same
+/// distance-field profile as the classic renderer. Runs in straight sRGB to
+/// match the reference iconmask.py compositing space.
 fn apply_edge_gloss(canvas: &mut [[f32; 4]], mask: &[f32], size: usize, cfg: &ValidatedHqRenderConfig) {
-    if !cfg.edge_gloss_enabled || cfg.edge_gloss_width <= 0.0 || cfg.edge_gloss_strength <= 0.0 {
+    let Some(params) = cfg.edge_gloss else {
         return;
-    }
-    let base_inset = erode_mask(mask, size, cfg.edge_gloss_width.ceil() as usize);
-    let inset = if cfg.edge_gloss_feather_blur > 0.0 {
-        gaussian_blur(&base_inset, size, size, cfg.edge_gloss_feather_blur)
-    } else {
-        base_inset
     };
     let light = cfg.edge_gloss_light;
-    let base = cfg.edge_gloss_base;
-    let ((a1, a2, b1, b2), profile) = gloss_region_angles(size, cfg.shape, cfg.corner);
-    let span_a = (a2 - a1).rem_euclid(std::f32::consts::TAU);
-    let span_b = b1 - b2;
-    let c = (size as f32 - 1.0) / 2.0;
-
-    for y in 0..size {
-        for x in 0..size {
-            let idx = y * size + x;
-            let edge = (mask[idx] - inset[idx]).clamp(0.0, 1.0);
-            if edge <= 0.0 {
-                continue;
-            }
-            if canvas[idx][3] <= 0.0 {
-                // The gloss is a mask over the existing content: nothing to
-                // light where the tile is fully transparent.
-                continue;
-            }
-            let px = x as f32 + 0.5;
-            let py = y as f32 + 0.5;
-            let theta = (py - c).atan2(px - c);
-            let phi = (theta - a1).rem_euclid(std::f32::consts::TAU);
-            let weight = if phi <= span_a {
-                super::gloss::region_a_weight(phi, span_a, &profile)
-            } else if span_b > 0.0 && theta >= b2 && theta <= b1 {
-                super::gloss::bottom_right_weight((b1 - theta) / span_b)
-            } else {
-                0.0
-            };
-            if weight <= 0.0 && base[3] <= 0.0 {
-                continue;
-            }
-
-            let mut out = [canvas[idx][0], canvas[idx][1], canvas[idx][2]];
-
-            // Directional highlight: screen-blend the light color so the
-            // existing pixels brighten instead of being covered.
-            if weight > 0.0 {
-                let t = (light[3] * weight * cfg.edge_gloss_strength * edge).clamp(0.0, 1.0);
-                if t > 0.0 {
-                    out[0] = 1.0 - (1.0 - out[0]) * (1.0 - light[0] * t);
-                    out[1] = 1.0 - (1.0 - out[1]) * (1.0 - light[1] * t);
-                    out[2] = 1.0 - (1.0 - out[2]) * (1.0 - light[2] * t);
-                }
-            }
-
-            // Base tone: multiply-blend on the unlit remainder of the band so
-            // the shading darkens the original pixels rather than painting
-            // over them.
-            let shade = (base[3] * (1.0 - weight) * cfg.edge_gloss_strength * edge).clamp(0.0, 1.0);
-            if shade > 0.0 {
-                out[0] *= 1.0 - shade * (1.0 - base[0]);
-                out[1] *= 1.0 - shade * (1.0 - base[1]);
-                out[2] *= 1.0 - shade * (1.0 - base[2]);
-            }
-
-            canvas[idx][0] = out[0].clamp(0.0, 1.0);
-            canvas[idx][1] = out[1].clamp(0.0, 1.0);
-            canvas[idx][2] = out[2].clamp(0.0, 1.0);
+    let field = super::gloss::edge_glow_field(mask, size, size as f32 / 2.0, &params);
+    for (idx, &glow) in field.iter().enumerate() {
+        if glow <= 0.0 {
+            continue;
         }
-    }
-}
-
-/// Rectangular erosion of a coverage mask (two separable min passes), used to
-/// carve the inset band that defines the edge gloss falloff.
-fn erode_mask(mask: &[f32], size: usize, radius: usize) -> Vec<f32> {
-    if radius == 0 {
-        return mask.to_vec();
-    }
-    let mut horizontal = vec![0.0f32; size * size];
-    for y in 0..size {
-        for x in 0..size {
-            let mut min_val = f32::INFINITY;
-            let lo = x.saturating_sub(radius);
-            let hi = (x + radius).min(size - 1);
-            for sx in lo..=hi {
-                min_val = min_val.min(mask[y * size + sx]);
-            }
-            horizontal[y * size + x] = min_val;
+        if canvas[idx][3] <= 0.0 {
+            // The gloss is a mask over the existing content: nothing to light
+            // where the tile is fully transparent.
+            continue;
         }
-    }
-    let mut out = vec![0.0f32; size * size];
-    for y in 0..size {
-        let lo = y.saturating_sub(radius);
-        let hi = (y + radius).min(size - 1);
-        for x in 0..size {
-            let mut min_val = f32::INFINITY;
-            for sy in lo..=hi {
-                min_val = min_val.min(horizontal[sy * size + x]);
-            }
-            out[y * size + x] = min_val;
+        let t = (light[3] * glow).clamp(0.0, 1.0);
+        if t <= 0.0 {
+            continue;
         }
+        canvas[idx][0] = (1.0 - (1.0 - canvas[idx][0]) * (1.0 - light[0] * t)).clamp(0.0, 1.0);
+        canvas[idx][1] = (1.0 - (1.0 - canvas[idx][1]) * (1.0 - light[1] * t)).clamp(0.0, 1.0);
+        canvas[idx][2] = (1.0 - (1.0 - canvas[idx][2]) * (1.0 - light[2] * t)).clamp(0.0, 1.0);
     }
-    out
 }
 
 pub(crate) fn gaussian_blur(mask: &[f32], width: usize, height: usize, sigma: f32) -> Vec<f32> {
@@ -865,12 +734,8 @@ mod tests {
             shadow_offset_factor: 0.012,
             shadow_fade: 0.25,
             shadow_mode: HqShadowMode::Icon,
-            edge_gloss_enabled: false,
-            edge_gloss_width: 2.0,
-            edge_gloss_strength: 0.6,
+            edge_gloss: None,
             edge_gloss_light: [1.0, 1.0, 1.0, 0.7],
-            edge_gloss_base: [0.0, 0.0, 0.0, 0.5],
-            edge_gloss_feather_blur: 0.0,
         }
     }
 

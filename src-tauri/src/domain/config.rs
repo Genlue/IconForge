@@ -57,15 +57,49 @@ pub struct StrokeConfig {
     pub color: String,
 }
 
+fn default_gloss_top_strength() -> f32 {
+    0.42
+}
+
+fn default_gloss_bottom_strength() -> f32 {
+    0.35
+}
+
+fn default_gloss_top_decay() -> f32 {
+    38.0
+}
+
+fn default_gloss_bottom_decay() -> f32 {
+    18.0
+}
+
+/// Edge gloss: a rim light that hugs the shape boundary and fades inwards,
+/// modulated by two soft bands along a rotatable light axis. The defaults come
+/// from the reference icon pipeline (dark theme icons: top band 0.42 / 38px,
+/// bottom band 0.35 / 18px).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GlossConfig {
     pub enabled: bool,
+    /// Rim falloff distance in px.
     pub width: f32,
     pub strength: f32,
     pub light_color: String,
-    pub base_color: String,
-    pub feather_blur: f32,
+    /// Intensity of the band on the lit side of the axis.
+    #[serde(default = "default_gloss_top_strength")]
+    pub top_strength: f32,
+    /// Intensity of the band on the opposite side.
+    #[serde(default = "default_gloss_bottom_strength")]
+    pub bottom_strength: f32,
+    /// How far the lit band reaches from the light side, in px.
+    #[serde(default = "default_gloss_top_decay")]
+    pub top_decay: f32,
+    /// How far the opposite band reaches, in px.
+    #[serde(default = "default_gloss_bottom_decay")]
+    pub bottom_decay: f32,
+    /// Rotation of the light axis in degrees (0 = light from the top).
+    #[serde(default)]
+    pub angle_degrees: f32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -104,20 +138,8 @@ const fn default_foreground_opacity() -> f32 {
     100.0
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GlassRenderConfig {
-    pub enabled: bool,
-    pub color_retention: f32,
-    pub bevel_radius: f32,
-    pub normal_strength: f32,
-    pub specular_strength: f32,
-    pub fresnel_strength: f32,
-    pub ao_strength: f32,
-    /// Contrast boost applied to the source image before glass shading.
-    /// 0 = unchanged, 1 = doubled contrast.
-    #[serde(default)]
-    pub contrast_strength: f32,
+const fn default_source_saturation() -> f32 {
+    100.0
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -144,10 +166,12 @@ pub struct RenderConfig {
     pub outer_shadow: OuterShadowConfig,
     pub stroke: StrokeConfig,
     pub gloss: GlossConfig,
+    /// Saturation of the imported source image, in percent. 100 = unchanged,
+    /// 0 = fully desaturated (grayscale).
+    #[serde(default = "default_source_saturation")]
+    pub source_saturation_percent: f32,
     pub auto_cutout: AutoCutoutConfig,
     pub hq_render: HqRenderConfig,
-    #[serde(default)]
-    pub glass_render: GlassRenderConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

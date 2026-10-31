@@ -1,10 +1,26 @@
 #[cfg(test)]
 mod tests {
     use iconforge_lib::domain::config::*;
+    use iconforge_lib::renderer::gloss::{edge_glow_field, EdgeGlossParams};
     use iconforge_lib::renderer::{render_master, validate_config};
     use image::RgbaImage;
 
-    fn gloss_config() -> RenderConfig {
+    /// Gloss profile with the reference defaults (light from the top).
+    fn gloss_config() -> GlossConfig {
+        GlossConfig {
+            enabled: true,
+            width: 4.0,
+            strength: 1.0,
+            light_color: "#FFFFFFFF".into(),
+            top_strength: 0.42,
+            bottom_strength: 0.35,
+            top_decay: 38.0,
+            bottom_decay: 18.0,
+            angle_degrees: 0.0,
+        }
+    }
+
+    fn render_config(gloss: GlossConfig) -> RenderConfig {
         RenderConfig {
             foreground_scale_percent: 100.0,
             foreground_fit: ForegroundFit::Contain,
@@ -34,14 +50,7 @@ mod tests {
                 width: 0.0,
                 color: "#00000000".into(),
             },
-            gloss: GlossConfig {
-                enabled: true,
-                width: 4.0,
-                strength: 1.0,
-                light_color: "#FFFFFFFF".into(),
-                base_color: "#808080FF".into(),
-                feather_blur: 0.0,
-            },
+            gloss,
             auto_cutout: AutoCutoutConfig {
                 enabled: false,
                 tolerance: 20.0,
@@ -68,24 +77,15 @@ mod tests {
                 shadow_fade: 0.25,
                 shadow_mode: HqShadowMode::Icon,
             },
-            glass_render: GlassRenderConfig {
-                enabled: false,
-                color_retention: 0.05,
-                bevel_radius: 0.12,
-                normal_strength: 1.0,
-                specular_strength: 0.25,
-                fresnel_strength: 0.5,
-                ao_strength: 0.35,
-                contrast_strength: 0.0,
-            },
+            source_saturation_percent: 100.0,
         }
     }
 
-    fn render_gloss() -> RgbaImage {
-        // A full-canvas gray source: the foreground fills the shape mask, so
-        // the gloss has real icon pixels to light along the edge band.
+    /// A full-canvas gray source: the foreground fills the shape mask, so the
+    /// glow has real icon pixels to light along the edge.
+    fn render(gloss: GlossConfig) -> RgbaImage {
         let source = RgbaImage::from_pixel(256, 256, image::Rgba([100, 100, 100, 255]));
-        render_master(&source, &validate_config(&gloss_config()).unwrap()).unwrap()
+        render_master(&source, &validate_config(&render_config(gloss)).unwrap()).unwrap()
     }
 
     fn sample(img: &RgbaImage, x: u32, y: u32) -> [u8; 4] {
@@ -93,107 +93,88 @@ mod tests {
     }
 
     #[test]
-    fn gloss_unlit_edges_shade_down() {
-        let img = render_gloss();
-        // Outside the two highlight spans the base tone multiplies the
-        // original pixels down: bottom edge, right edge, and the corner arcs
-        // flanking the top-left highlight (bottom-left and top-right
-        // roundings) all end up darker than the 100-gray source instead of
-        // showing a painted ring.
-        for (x, y) in [(128, 238), (238, 128), (32, 224), (214, 24)] {
-            let p = sample(&img, x, y);
+    fn gloss_lights_the_lit_side_only() {
+        let img = render(gloss_config());
+        // Light comes from the top: the top edge is clearly lifted off the
+        // 100-gray source...
+        let top = sample(&img, 128, 18)[0];
+        assert!(top > 130, "top edge should be lit, got {top}");
+        // ...the bottom edge gets the weaker opposite band...
+        let bottom = sample(&img, 128, 237)[0];
+        assert!(
+            bottom > 100 && bottom < top,
+            "bottom edge should be dimmer than the top, got {bottom} (top {top})"
+        );
+        // ...and the left/right edges sit in the middle of the vertical ramp,
+        // where the rim light has all but faded out.
+        for (x, y) in [(18, 128), (238, 128)] {
+            let p = sample(&img, x, y)[0];
             assert!(
-                p[0] < 90,
-                "unlit edge ({x},{y}) should shade below the source gray, got {}",
-                p[0]
+                p <= 108,
+                "side edge ({x},{y}) should stay near the source gray, got {p}"
             );
         }
     }
 
     #[test]
-    fn gloss_top_left_highlight() {
-        let img = render_gloss();
-        // The top-left corner arc peaks at full strength (the screen blend
-        // pushes the gray source to near white)...
+    fn gloss_angle_rotates_the_light_axis() {
+        // 90° turns the light source to the right: the right edge takes the
+        // strong band, the left edge keeps the weaker opposite band, and the
+        // top/bottom edges (now in the middle of the ramp) go back to the
+        // source gray.
+        let mut cfg = gloss_config();
+        cfg.angle_degrees = 90.0;
+        let img = render(cfg);
+        let right = sample(&img, 238, 128)[0];
+        let left = sample(&img, 18, 128)[0];
+        assert!(right > 130, "right edge should be lit at 90°, got {right}");
         assert!(
-            sample(&img, 32, 32)[0] > 250,
-            "corner should peak near white, got {}",
-            sample(&img, 32, 32)[0]
+            left > 100 && left < right,
+            "left edge keeps the weaker band, got {left} (right {right})"
         );
-        // ...while the straight left/top edges sit slightly below it.
-        for (x, y) in [(18, 128), (128, 18)] {
-            let p = sample(&img, x, y);
+        for (x, y) in [(128, 18), (128, 237)] {
+            let p = sample(&img, x, y)[0];
             assert!(
-                p[0] > 200 && p[0] < 250,
-                "edge ({x},{y}) should be brightened below the peak, got {}",
-                p[0]
+                p <= 108,
+                "top/bottom edge ({x},{y}) should be dark at 90°, got {p}"
             );
         }
     }
 
     #[test]
-    fn gloss_top_left_ends_fade_into_base() {
-        let img = render_gloss();
-        // Near the upper end of the bottom-left rounding (start of the gloss)
-        // and the left end of the top-right rounding (end of the gloss) the
-        // highlight must fall off gradually toward the shaded edge.
-        let start = sample(&img, 18, 186);
-        assert!(
-            start[0] < 160,
-            "gloss start should fade toward the shaded edge, got {}",
-            start[0]
-        );
-        let mid_fade = sample(&img, 18, 178);
-        assert!(
-            mid_fade[0] > start[0] && mid_fade[0] < 235,
-            "gloss start should show a gradient in between, got {} (start {})",
-            mid_fade[0],
-            start[0]
-        );
-        let end = sample(&img, 186, 18);
-        assert!(
-            end[0] < 160,
-            "gloss end should fade toward the shaded edge, got {}",
-            end[0]
-        );
+    fn gloss_angle_180_flips_the_lit_side() {
+        // With only the upper band enabled, 180° must move the whole highlight
+        // from the top edge to the bottom edge.
+        let mut cfg = gloss_config();
+        cfg.bottom_strength = 0.0;
+        cfg.angle_degrees = 180.0;
+        let img = render(cfg);
+        let bottom = sample(&img, 128, 237)[0];
+        assert!(bottom > 130, "bottom edge should be lit at 180°, got {bottom}");
+        let top = sample(&img, 128, 18)[0];
+        assert!(top <= 108, "top edge should be dark at 180°, got {top}");
     }
 
     #[test]
-    fn gloss_bottom_right_highlight_fades_in_and_out() {
-        let img = render_gloss();
-        // The bottom-right rounding arc brightens from the shaded bottom
-        // edge...
+    fn gloss_fades_away_from_the_boundary() {
+        let img = render(gloss_config());
+        // The rim decays as exp(-d / width), so it is gone a few pixels in.
+        let edge = sample(&img, 128, 18)[0];
+        let inner = sample(&img, 128, 26)[0];
+        let deep = sample(&img, 128, 40)[0];
         assert!(
-            sample(&img, 188, 237)[0] < 170,
-            "arc start should stay in the shaded band"
+            edge > inner && inner > deep,
+            "glow should decay inwards: {edge} > {inner} > {deep}"
         );
-        assert!(
-            sample(&img, 207, 233)[0] > 180,
-            "arc should brighten towards the middle"
-        );
-        // ...holds the same reduced level as the straight edges across the
-        // middle...
-        let mid = sample(&img, 223, 223);
-        assert!(
-            mid[0] > 200 && mid[0] < 250,
-            "arc middle should match the edge level, got {}",
-            mid[0]
-        );
-        // ...and fades back out to the shaded band at its upper side (right
-        // edge end).
-        assert!(
-            sample(&img, 238, 188)[0] < 170,
-            "arc end should fade back to the shaded band"
-        );
+        assert_eq!(deep, 100, "the icon body far from the edge is untouched");
     }
 
     #[test]
     fn gloss_needs_underlying_content() {
-        // The gloss is a mask over the original icon, not a painted ring: with
-        // a small foreground and no backplate the edge band has no icon
-        // pixels, so it must stay fully transparent instead of showing a base
-        // ring.
-        let mut config = gloss_config();
+        // The glow lights existing pixels, it does not paint a ring: with a
+        // small foreground and no backplate the edge band has no icon pixels,
+        // so it must stay fully transparent.
+        let mut config = render_config(gloss_config());
         config.foreground_scale_percent = 50.0;
         let source = RgbaImage::from_pixel(256, 256, image::Rgba([100, 100, 100, 255]));
         let img = render_master(&source, &validate_config(&config).unwrap()).unwrap();
@@ -204,7 +185,71 @@ mod tests {
                 "edge band ({x},{y}) has no icon pixels and must stay transparent"
             );
         }
-        // The center keeps the original pixels untouched.
         assert_eq!(sample(&img, 128, 128), [100, 100, 100, 255]);
+    }
+
+    #[test]
+    fn gloss_follows_the_edge_when_the_shape_touches_the_canvas() {
+        // The default preset sits flush against the canvas (canvasInset 0), so
+        // there are no uncovered pixels above the top edge. The rim must still
+        // run along the whole border instead of only around the corners.
+        let mut config = render_config(gloss_config());
+        config.canvas_inset = 0.0;
+        let source = RgbaImage::from_pixel(256, 256, image::Rgba([100, 100, 100, 255]));
+        let img = render_master(&source, &validate_config(&config).unwrap()).unwrap();
+
+        for x in [64u32, 100, 128, 156, 192] {
+            let p = sample(&img, x, 1)[0];
+            assert!(p > 130, "top edge ({x},1) should be lit, got {p}");
+        }
+        for x in [64u32, 128, 192] {
+            let p = sample(&img, x, 254)[0];
+            assert!(p > 110, "bottom edge ({x},254) should be lit, got {p}");
+        }
+    }
+
+    fn square_mask(size: usize, inset: f32) -> Vec<f32> {
+        let mut mask = vec![0.0f32; size * size];
+        for y in 0..size {
+            for x in 0..size {
+                let px = x as f32 + 0.5;
+                let py = y as f32 + 0.5;
+                if px >= inset && px <= size as f32 - inset && py >= inset && py <= size as f32 - inset
+                {
+                    mask[y * size + x] = 1.0;
+                }
+            }
+        }
+        mask
+    }
+
+    #[test]
+    fn edge_glow_field_stays_inside_the_silhouette() {
+        let size = 256usize;
+        let mask = square_mask(size, 16.0);
+        let params = EdgeGlossParams {
+            rim: 4.0,
+            strength: 1.0,
+            top: 0.42,
+            bottom: 0.35,
+            top_decay: 38.0,
+            bottom_decay: 18.0,
+            angle_degrees: 0.0,
+        };
+        let field = edge_glow_field(&mask, size, 112.0, &params);
+        assert_eq!(field[0], 0.0, "the corner outside the shape stays dark");
+        assert_eq!(
+            field[128 * size + 128],
+            0.0,
+            "the deep interior is out of the rim's reach"
+        );
+        let top = field[18 * size + 128];
+        let bottom = field[237 * size + 128];
+        assert!(top > 0.0 && bottom > 0.0);
+        assert!(top > bottom, "the lit side is stronger: {top} vs {bottom}");
+        assert!(
+            top > field[26 * size + 128],
+            "the rim decays inwards from the boundary"
+        );
     }
 }

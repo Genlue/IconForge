@@ -40,17 +40,14 @@ pub struct ValidatedRenderConfig {
     pub outer_shadow_color: String,
     pub stroke_width: f32,
     pub stroke_color: String,
-    pub gloss_enabled: bool,
-    pub gloss_width: f32,
-    pub gloss_strength: f32,
+    pub gloss: Option<super::gloss::EdgeGlossParams>,
     pub gloss_light_color: String,
-    pub gloss_base_color: String,
-    pub gloss_feather_blur: f32,
+    /// Saturation multiplier for the imported source image (0 = grayscale).
+    pub source_saturation: f32,
     pub auto_cutout_enabled: bool,
     pub auto_cutout_tolerance: f32,
     pub auto_cutout_feather: f32,
     pub hq: Option<ValidatedHqRenderConfig>,
-    pub glass: Option<super::glass::ValidatedGlassRenderConfig>,
 }
 
 pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, AppError> {
@@ -69,7 +66,7 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
     let _shadow_color = parse_hex_rgba(&config.outer_shadow.color)?;
     let _stroke_color = parse_hex_rgba(&config.stroke.color)?;
     let _gloss_light = parse_hex_rgba(&config.gloss.light_color)?;
-    let _gloss_base = parse_hex_rgba(&config.gloss.base_color)?;
+    let gloss = super::gloss::validate_edge_gloss(&config.gloss)?;
 
     if !config.foreground_offset_x.is_finite()
         || !(-128.0..=128.0).contains(&config.foreground_offset_x)
@@ -100,6 +97,14 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
     {
         return Err(AppError::InvalidArgument(
             "foregroundOpacityPercent must be in 0..=100".into(),
+        ));
+    }
+
+    if !config.source_saturation_percent.is_finite()
+        || !(0.0..=100.0).contains(&config.source_saturation_percent)
+    {
+        return Err(AppError::InvalidArgument(
+            "sourceSaturationPercent must be in 0..=100".into(),
         ));
     }
 
@@ -168,22 +173,6 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
             "stroke width must be in 0..=32".into(),
         ));
     }
-    if !config.gloss.width.is_finite() || !(0.0..=32.0).contains(&config.gloss.width) {
-        return Err(AppError::InvalidArgument(
-            "gloss width must be in 0..=32".into(),
-        ));
-    }
-    if !config.gloss.strength.is_finite() || !(0.0..=1.0).contains(&config.gloss.strength) {
-        return Err(AppError::InvalidArgument(
-            "gloss strength must be in 0..=1".into(),
-        ));
-    }
-    if !config.gloss.feather_blur.is_finite() || !(0.0..=32.0).contains(&config.gloss.feather_blur)
-    {
-        return Err(AppError::InvalidArgument(
-            "gloss featherBlur must be in 0..=32".into(),
-        ));
-    }
     if !config.auto_cutout.tolerance.is_finite()
         || !(0.0..=100.0).contains(&config.auto_cutout.tolerance)
     {
@@ -201,12 +190,6 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
 
     let hq = if config.hq_render.enabled {
         Some(validate_hq(config)?)
-    } else {
-        None
-    };
-
-    let glass = if config.glass_render.enabled {
-        Some(super::glass::validate_glass(config)?)
     } else {
         None
     };
@@ -236,17 +219,13 @@ pub fn validate_config(config: &RenderConfig) -> Result<ValidatedRenderConfig, A
         outer_shadow_color: config.outer_shadow.color.clone(),
         stroke_width: config.stroke.width,
         stroke_color: config.stroke.color.clone(),
-        gloss_enabled: config.gloss.enabled,
-        gloss_width: config.gloss.width,
-        gloss_strength: config.gloss.strength,
+        gloss,
         gloss_light_color: config.gloss.light_color.clone(),
-        gloss_base_color: config.gloss.base_color.clone(),
-        gloss_feather_blur: config.gloss.feather_blur,
+        source_saturation: config.source_saturation_percent / 100.0,
         auto_cutout_enabled: config.auto_cutout.enabled,
         auto_cutout_tolerance: config.auto_cutout.tolerance,
         auto_cutout_feather: config.auto_cutout.feather,
         hq,
-        glass,
     })
 }
 
@@ -254,8 +233,8 @@ pub fn render_master(
     source: &RgbaImage,
     config: &ValidatedRenderConfig,
 ) -> Result<RgbaImage, AppError> {
-    // Auto cutout applies to the original source for both the classic and the
-    // adaptive high-quality pipelines.
+    // Source adjustments apply to the original image for both the classic and
+    // the adaptive high-quality pipelines.
     let cutout_buffer;
     let prepared = if config.auto_cutout_enabled {
         cutout_buffer = super::cutout::remove_border_background(
@@ -267,12 +246,13 @@ pub fn render_master(
     } else {
         source
     };
-
-    // Glass-texture renderer replaces the classic layer stack entirely when
-    // enabled (takes precedence over the HQ renderer).
-    if config.glass.is_some() {
-        return apply_content_scale(super::glass::render_glass(prepared, config)?, config);
-    }
+    let desaturated_buffer;
+    let prepared = if config.source_saturation < 1.0 {
+        desaturated_buffer = super::adjust::apply_saturation(prepared, config.source_saturation);
+        &desaturated_buffer
+    } else {
+        prepared
+    };
 
     // Adaptive high-quality renderer (port of iconmask.py) replaces the
     // classic layer stack entirely when enabled.
@@ -300,7 +280,7 @@ pub fn render_master(
         over(&mut body, stroke);
     }
 
-    if config.gloss_enabled && config.gloss_width > 0.0 && config.gloss_strength > 0.0 {
+    if config.gloss.is_some() {
         super::gloss::apply_edge_gloss(&mut body, &mask, config)?;
     }
 

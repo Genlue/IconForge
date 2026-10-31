@@ -39,8 +39,11 @@ mod tests {
                 width: 3.0,
                 strength: 0.7,
                 light_color: "#FFFFFFFF".into(),
-                base_color: "#808080FF".into(),
-                feather_blur: 0.0,
+                top_strength: 0.42,
+                bottom_strength: 0.35,
+                top_decay: 38.0,
+                bottom_decay: 18.0,
+                angle_degrees: 0.0,
             },
             auto_cutout: AutoCutoutConfig {
                 enabled: false,
@@ -68,16 +71,7 @@ mod tests {
                 shadow_fade: 0.25,
                 shadow_mode: HqShadowMode::Icon,
             },
-            glass_render: GlassRenderConfig {
-                enabled: false,
-                color_retention: 0.05,
-                bevel_radius: 0.12,
-                normal_strength: 1.0,
-                specular_strength: 0.25,
-                fresnel_strength: 0.5,
-                ao_strength: 0.35,
-                contrast_strength: 0.0,
-            },
+            source_saturation_percent: 100.0,
         }
     }
 
@@ -238,5 +232,43 @@ mod tests {
         )
         .unwrap();
         assert_eq!(erased.get_pixel(128, 128).0[3], 0);
+    }
+
+    #[test]
+    fn source_saturation_can_go_all_the_way_to_grayscale() {
+        let source = RgbaImage::from_pixel(256, 256, Rgba([220, 40, 40, 255]));
+
+        // 100% keeps the source colour untouched.
+        let full = render_master(&source, &validate_config(&config()).unwrap()).unwrap();
+        let kept = full.get_pixel(128, 128).0;
+        assert!(kept[0] > 200 && kept[1] < 60, "source colour kept, got {kept:?}");
+
+        // 0% collapses every channel onto the Rec.601 luma.
+        let mut raw = config();
+        raw.source_saturation_percent = 0.0;
+        let gray = render_master(&source, &validate_config(&raw).unwrap()).unwrap();
+        let px = gray.get_pixel(128, 128).0;
+        assert_eq!(
+            (px[0], px[1], px[2]),
+            (px[0], px[0], px[0]),
+            "0% saturation must produce a neutral gray, got {px:?}"
+        );
+        // 0.299*220 + 0.587*40 + 0.114*40 = 93.8
+        assert!((px[0] as i16 - 94).abs() <= 2, "unexpected luma {}", px[0]);
+        assert_eq!(px[3], 255, "alpha is untouched");
+    }
+
+    #[test]
+    fn source_saturation_is_monotonic_between_the_endpoints() {
+        let source = RgbaImage::from_pixel(256, 256, Rgba([220, 40, 40, 255]));
+        let mut raw = config();
+        raw.source_saturation_percent = 50.0;
+        let half = render_master(&source, &validate_config(&raw).unwrap()).unwrap();
+        let px = half.get_pixel(128, 128).0;
+        assert!(
+            px[0] > 100 && px[0] < 200 && px[1] > 40 && px[1] < 94,
+            "50% should sit between the original and the gray, got {px:?}"
+        );
+        assert!(px[0] > px[1], "chroma is only scaled down, not removed");
     }
 }

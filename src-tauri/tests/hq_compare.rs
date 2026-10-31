@@ -47,8 +47,11 @@ mod tests {
                 width: 3.0,
                 strength: 0.7,
                 light_color: "#FFFFFFFF".into(),
-                base_color: "#808080FF".into(),
-                feather_blur: 0.0,
+                top_strength: 0.42,
+                bottom_strength: 0.35,
+                top_decay: 38.0,
+                bottom_decay: 18.0,
+                angle_degrees: 0.0,
             },
             auto_cutout: AutoCutoutConfig {
                 enabled: false,
@@ -76,16 +79,7 @@ mod tests {
                 shadow_fade: 0.25,
                 shadow_mode: HqShadowMode::Icon,
             },
-            glass_render: GlassRenderConfig {
-                enabled: false,
-                color_retention: 0.05,
-                bevel_radius: 0.12,
-                normal_strength: 1.0,
-                specular_strength: 0.25,
-                fresnel_strength: 0.5,
-                ao_strength: 0.35,
-                contrast_strength: 0.0,
-            },
+            source_saturation_percent: 100.0,
         }
     }
 

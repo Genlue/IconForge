@@ -1,212 +1,246 @@
-use std::f32::consts::PI;
-
 use super::color::parse_hex_rgba;
 use super::composite::LinearPremultipliedImage;
-use super::mask::{generate_inset_shape_mask, AlphaMask};
+use super::mask::AlphaMask;
 use super::pipeline::ValidatedRenderConfig;
-use crate::domain::config::IconShape;
+use crate::domain::config::GlossConfig;
 use crate::error::app_error::AppError;
 
-/// Opacity of the highlight along the straight left/top edges, slightly below
-/// the full-strength corner arcs.
-const EDGE_LEVEL: f32 = 0.85;
-/// Fraction of each straight edge used for the fade-in/fade-out at the ends
-/// and for the transitions between the edge level and the corner level.
-const RAMP_FRAC: f32 = 0.3;
+const SQRT_2: f32 = std::f32::consts::SQRT_2;
 
-/// Shared highlight profile across the two renderers.
+/// Edge gloss profile, shared by the classic and the adaptive HQ renderers.
+///
+/// Ported from the reference icon pipeline (`edge_glow`): a rim light that
+/// hugs the shape boundary and fades inwards as `exp(-d / rim)`, modulated by
+/// two soft bands along a rotatable light axis — a strong one on the lit side
+/// and a weaker one on the opposite side — so the icon reads as lit from
+/// above. Only the silhouette matters, so flat artwork gets the same rim as
+/// detailed artwork.
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct GlossProfile {
-    /// Fraction of the top-left highlight's angular span covered by the left
-    /// edge (position of the corner arc start).
-    pub k1: f32,
-    /// Fraction covered by the left edge plus the corner arc (position of the
-    /// corner arc end / top edge start).
-    pub k2: f32,
+pub struct EdgeGlossParams {
+    /// Rim falloff distance in px: the light decays as `exp(-d / rim)`.
+    pub rim: f32,
+    /// Overall intensity multiplier.
+    pub strength: f32,
+    /// Intensity of the band on the lit side of the axis.
+    pub top: f32,
+    /// Intensity of the band on the opposite side.
+    pub bottom: f32,
+    /// How far the lit band reaches from the light side, in px.
+    pub top_decay: f32,
+    /// How far the opposite band reaches, in px.
+    pub bottom_decay: f32,
+    /// Rotation of the light axis in degrees (0 = light from the top,
+    /// positive values rotate the light source clockwise).
+    pub angle_degrees: f32,
 }
 
-fn smoothstep01(x: f32) -> f32 {
-    x * x * (3.0 - 2.0 * x)
-}
-
-/// Weight of the top-left highlight at angular position `phi` (0..span) along
-/// its span: fades in from the upper end of the bottom-left rounding, holds
-/// the slightly reduced edge level along the straight edges, peaks at full
-/// strength across the top-left corner arc, then fades back out to the edge
-/// level and finally to transparent at the left end of the top-right rounding.
-pub(crate) fn region_a_weight(phi: f32, span: f32, profile: &GlossProfile) -> f32 {
-    let s = (phi / span).clamp(0.0, 1.0);
-    let k1 = profile.k1;
-    let k2 = profile.k2;
-    if k1 <= 0.001 && k2 >= 0.999 {
-        // No straight edges (squircle/circle): the whole span is the corner
-        // arc, fading in at the left end and out at the top end.
-        let f_in = smoothstep01((s / RAMP_FRAC).clamp(0.0, 1.0));
-        let f_out = 1.0 - smoothstep01(((s - (1.0 - RAMP_FRAC)) / RAMP_FRAC).clamp(0.0, 1.0));
-        return f_in.min(f_out);
+impl EdgeGlossParams {
+    /// Whether the profile can produce any light at all.
+    pub fn is_active(&self) -> bool {
+        self.rim > 0.0 && self.strength > 0.0 && (self.top > 0.0 || self.bottom > 0.0)
     }
-    let t1 = k1 * RAMP_FRAC;
-    let t2 = k1 * (1.0 - RAMP_FRAC);
-    let t3 = k2 + (1.0 - k2) * RAMP_FRAC;
-    let t4 = k2 + (1.0 - k2) * (1.0 - RAMP_FRAC);
-    if s <= t1 {
-        EDGE_LEVEL * smoothstep01((s / t1).clamp(0.0, 1.0))
-    } else if s <= t2 {
-        EDGE_LEVEL
-    } else if s <= k1 {
-        EDGE_LEVEL + (1.0 - EDGE_LEVEL) * smoothstep01(((s - t2) / (k1 - t2)).clamp(0.0, 1.0))
-    } else if s <= k2 {
-        1.0
-    } else if s <= t3 {
-        1.0 - (1.0 - EDGE_LEVEL) * smoothstep01(((s - k2) / (t3 - k2)).clamp(0.0, 1.0))
-    } else if s <= t4 {
-        EDGE_LEVEL
+}
+
+/// Validate the gloss settings and fold them into a profile. Returns `None`
+/// when the effect is switched off or has nothing to draw, so the renderers
+/// can skip the whole pass.
+pub fn validate_edge_gloss(gloss: &GlossConfig) -> Result<Option<EdgeGlossParams>, AppError> {
+    fn check(v: f32, lo: f32, hi: f32, name: &str) -> Result<f32, AppError> {
+        if !v.is_finite() || !(lo..=hi).contains(&v) {
+            return Err(AppError::InvalidArgument(format!(
+                "{name} must be in {lo}..={hi}"
+            )));
+        }
+        Ok(v)
+    }
+    let params = EdgeGlossParams {
+        rim: check(gloss.width, 0.0, 32.0, "gloss width")?,
+        strength: check(gloss.strength, 0.0, 1.0, "gloss strength")?,
+        top: check(gloss.top_strength, 0.0, 1.0, "gloss topStrength")?,
+        bottom: check(gloss.bottom_strength, 0.0, 1.0, "gloss bottomStrength")?,
+        top_decay: check(gloss.top_decay, 1.0, 256.0, "gloss topDecay")?,
+        bottom_decay: check(gloss.bottom_decay, 1.0, 256.0, "gloss bottomDecay")?,
+        angle_degrees: check(gloss.angle_degrees, -360.0, 360.0, "gloss angleDegrees")?,
+    };
+    Ok(if gloss.enabled && params.is_active() {
+        Some(params)
     } else {
-        EDGE_LEVEL * (1.0 - smoothstep01(((s - t4) / (1.0 - t4)).clamp(0.0, 1.0)))
-    }
+        None
+    })
 }
 
-/// Weight of the bottom-right highlight at arc position `u` (0..1 from the
-/// left side of the rounding to its upper side): fades in from the edge base
-/// color at the left side, holds the same reduced level as the straight edges
-/// across the middle, then fades back out to transparent at the upper side.
-pub(crate) fn bottom_right_weight(u: f32) -> f32 {
-    let fade_in = smoothstep01((u / 0.35).clamp(0.0, 1.0));
-    let fade_out = 1.0 - smoothstep01(((u - 0.65) / 0.35).clamp(0.0, 1.0));
-    EDGE_LEVEL * fade_in.min(fade_out)
-}
-
-/// Angular spans (in radians, y-down screen coordinates where the angle grows
-/// clockwise) of the two highlight regions, measured from the shape center:
-/// `(a1, a2, b1, b2)`, plus the shared opacity profile.
-///
-/// Top-left highlight: the boundary arc from the upper end of the bottom-left
-/// rounding, clockwise along the left edge and top edge, to the left end of
-/// the top-right rounding (region A, angular sweep `a1 -> a2`).
-///
-/// Bottom-right highlight: the bottom-right rounding arc from its left side
-/// (bottom edge end) to its upper side (right edge end), region B = the angle
-/// interval `[b2, b1]`.
-fn gloss_regions(config: &ValidatedRenderConfig) -> ((f32, f32, f32, f32), GlossProfile) {
-    match config.shape {
-        IconShape::Squircle => (
-            (PI, -PI / 2.0, PI / 2.0, 0.0),
-            GlossProfile { k1: 0.0, k2: 1.0 },
-        ),
-        IconShape::Rectangle => rounded_rect_regions(config, 0.0),
-        IconShape::RoundedRectangle => {
-            let inner_half = 128.0 - config.canvas_inset;
-            let r = config.corner_radius.clamp(0.0, inner_half);
-            rounded_rect_regions(config, r)
+/// Distance in px from every covered pixel to the nearest uncovered pixel of
+/// `mask` (0 at and outside the boundary, growing inwards). Two-pass 3-4
+/// chamfer transform: exact for the axis-aligned steps that dominate a thin
+/// rim, and within a few percent on the diagonals.
+pub fn distance_inside(mask: &[f32], size: usize) -> Vec<f32> {
+    const INF: f32 = 1.0e9;
+    let mut d = vec![INF; size * size];
+    for (i, &m) in mask.iter().enumerate() {
+        if m < 0.5 {
+            d[i] = 0.0;
         }
     }
+    // Everything outside the canvas counts as uncovered — the reference pads
+    // the silhouette with one transparent ring before the distance transform.
+    // Without it a shape that sits flush against the canvas border (the
+    // default preset has canvasInset 0) has no uncovered pixel anywhere near
+    // the top edge, so the distance is measured all the way to the corner
+    // cut-outs: the rim then only shows around the corners and the edges stay
+    // dark.
+    for x in 0..size {
+        for y in [0, size - 1] {
+            let i = y * size + x;
+            if d[i] > 0.0 {
+                d[i] = 1.0;
+            }
+        }
+    }
+    for y in 0..size {
+        for x in [0, size - 1] {
+            let i = y * size + x;
+            if d[i] > 0.0 {
+                d[i] = 1.0;
+            }
+        }
+    }
+    for y in 0..size {
+        for x in 0..size {
+            let i = y * size + x;
+            let mut best = d[i];
+            if y > 0 {
+                best = best.min(d[i - size] + 1.0);
+                if x > 0 {
+                    best = best.min(d[i - size - 1] + SQRT_2);
+                }
+                if x + 1 < size {
+                    best = best.min(d[i - size + 1] + SQRT_2);
+                }
+            }
+            if x > 0 {
+                best = best.min(d[i - 1] + 1.0);
+            }
+            d[i] = best;
+        }
+    }
+    for y in (0..size).rev() {
+        for x in (0..size).rev() {
+            let i = y * size + x;
+            let mut best = d[i];
+            if y + 1 < size {
+                best = best.min(d[i + size] + 1.0);
+                if x > 0 {
+                    best = best.min(d[i + size - 1] + SQRT_2);
+                }
+                if x + 1 < size {
+                    best = best.min(d[i + size + 1] + SQRT_2);
+                }
+            }
+            if x + 1 < size {
+                best = best.min(d[i + 1] + 1.0);
+            }
+            d[i] = best;
+        }
+    }
+    d
 }
 
-fn rounded_rect_regions(config: &ValidatedRenderConfig, r: f32) -> ((f32, f32, f32, f32), GlossProfile) {
-    let x0 = config.canvas_inset;
-    let x1 = 256.0 - config.canvas_inset;
-    let y0 = config.canvas_inset;
-    let y1 = 256.0 - config.canvas_inset;
-    let c = 128.0;
-    let a1 = (y1 - r - c).atan2(x0 - c);
-    let a2 = (y0 - c).atan2(x1 - r - c);
-    let b1 = (y1 - c).atan2(x1 - r - c);
-    let b2 = (y1 - r - c).atan2(x1 - c);
-    let span_a = (a2 - a1).rem_euclid(std::f32::consts::TAU);
-    // Positions of the corner arc start/end along the top-left span.
-    let k1 = ((y0 + r - c).atan2(x0 - c) - a1).rem_euclid(std::f32::consts::TAU) / span_a;
-    let k2 = ((y0 - c).atan2(x0 + r - c) - a1).rem_euclid(std::f32::consts::TAU) / span_a;
-    ((a1, a2, b1, b2), GlossProfile { k1, k2 })
+/// The edge-gloss light field: per-pixel intensity in `0..=1`, zero outside
+/// the silhouette. `half_extent` is the half size of the square the shape
+/// fills, used to place the two vertical bands on the shape rather than on the
+/// canvas.
+pub fn edge_glow_field(
+    mask: &[f32],
+    size: usize,
+    half_extent: f32,
+    params: &EdgeGlossParams,
+) -> Vec<f32> {
+    let mut out = vec![0.0f32; size * size];
+    if !params.is_active() {
+        return out;
+    }
+    let d = distance_inside(mask, size);
+
+    // Light axis: 0° points straight up, positive angles rotate the light
+    // source clockwise in screen space (y grows downwards).
+    let theta = params.angle_degrees.to_radians();
+    let (ax, ay) = (theta.sin(), -theta.cos());
+    let centre = size as f32 / 2.0;
+    // Half extent of the shape along the light axis, so the lit band starts at
+    // full strength right on the shape boundary for any rotation.
+    let reach = half_extent.max(1.0) * (ax.abs() + ay.abs());
+
+    let inv_rim = 1.0 / params.rim.max(0.01);
+    let inv_top = 1.0 / params.top_decay.max(0.01);
+    let inv_bottom = 1.0 / params.bottom_decay.max(0.01);
+
+    for y in 0..size {
+        let py = y as f32 + 0.5 - centre;
+        for x in 0..size {
+            let i = y * size + x;
+            if mask[i] < 0.5 {
+                continue;
+            }
+            let px = x as f32 + 0.5 - centre;
+            // Projection on the light axis: positive towards the light source.
+            let s = px * ax + py * ay;
+            let lit = params.top * (-(reach - s).max(0.0) * inv_top).exp();
+            let shade = params.bottom * (-(reach + s).max(0.0) * inv_bottom).exp();
+            let band = lit + shade;
+            if band <= 0.0 {
+                continue;
+            }
+            let rim = (-d[i] * inv_rim).exp();
+            // Beyond ~9x the rim width the light is below one part in 10k;
+            // dropping it keeps the field exactly zero in the icon interior.
+            if rim < 1.0e-4 {
+                continue;
+            }
+            out[i] = (band * rim * params.strength).clamp(0.0, 1.0);
+        }
+    }
+    out
 }
 
-/// Edge gloss: a mask-based lighting pass applied directly on top of the
-/// composed icon. The band between the shape boundary and its inset
-/// (optionally feathered) forms the mask; inside it the directional highlight
-/// screen-blends the light color onto the underlying pixels (left/top edges,
-/// region A, and the bottom-right corner arc, region B), while the remaining
-/// band multiply-blends the base color as a shading tone. Both operations
-/// modulate the original icon instead of painting an opaque ring, so the
-/// artwork stays fully visible through the effect and transparent areas are
-/// left untouched.
+/// Edge gloss: a screen-blend lighting pass applied on top of the composed
+/// icon. The light follows the shape boundary and decays inwards, so the
+/// artwork stays fully visible through the effect instead of being covered by
+/// a painted ring; fully transparent pixels are left untouched.
 pub fn apply_edge_gloss(
     body: &mut LinearPremultipliedImage,
     mask: &AlphaMask,
     config: &ValidatedRenderConfig,
 ) -> Result<(), AppError> {
-    let size = 256u32;
-    let inset = generate_inset_shape_mask(size, config, config.canvas_inset + config.gloss_width);
-    // Softening the inner boundary of the gloss band smooths the transition
-    // between the edge lighting and the icon body below it.
-    let inset = if config.gloss_feather_blur > 0.0 {
-        super::shadow::gaussian_blur_alpha(&inset, size, size, config.gloss_feather_blur)
-    } else {
-        inset
+    let Some(params) = &config.gloss else {
+        return Ok(());
     };
+    let size = 256usize;
     let light = parse_hex_rgba(&config.gloss_light_color)?;
-    let base = parse_hex_rgba(&config.gloss_base_color)?;
-    let ((a1, a2, b1, b2), profile) = gloss_regions(config);
-    let span_a = (a2 - a1).rem_euclid(std::f32::consts::TAU);
-    let span_b = b1 - b2;
+    let half_extent = size as f32 / 2.0 - config.canvas_inset;
+    let field = edge_glow_field(mask, size, half_extent, params);
 
-    for y in 0..size {
-        for x in 0..size {
-            let idx = (y * size + x) as usize;
-            let edge = (mask[idx] - inset[idx]).clamp(0.0, 1.0);
-            if edge <= 0.0 {
-                continue;
-            }
-            let dst_a = body.data[idx][3];
-            if dst_a <= 0.0 {
-                // The gloss is a mask over the original icon: nothing to light
-                // where the icon is fully transparent.
-                continue;
-            }
-            let px = x as f32 + 0.5;
-            let py = y as f32 + 0.5;
-            let theta = (py - 128.0).atan2(px - 128.0);
-            let phi = (theta - a1).rem_euclid(std::f32::consts::TAU);
-            let weight = if phi <= span_a {
-                region_a_weight(phi, span_a, &profile)
-            } else if span_b > 0.0 && theta >= b2 && theta <= b1 {
-                bottom_right_weight((b1 - theta) / span_b)
-            } else {
-                0.0
-            };
-            if weight <= 0.0 && base.a <= 0.0 {
-                continue;
-            }
-
-            // Blend in straight alpha, then re-premultiply.
-            let dst_r = body.data[idx][0] / dst_a;
-            let dst_g = body.data[idx][1] / dst_a;
-            let dst_b = body.data[idx][2] / dst_a;
-            let mut out = [dst_r, dst_g, dst_b];
-
-            // Directional highlight: screen-blend the light color so the
-            // existing pixels brighten instead of being covered.
-            if weight > 0.0 {
-                let t = (light.a * weight * config.gloss_strength * edge).clamp(0.0, 1.0);
-                if t > 0.0 {
-                    out[0] = 1.0 - (1.0 - out[0]) * (1.0 - light.r * t);
-                    out[1] = 1.0 - (1.0 - out[1]) * (1.0 - light.g * t);
-                    out[2] = 1.0 - (1.0 - out[2]) * (1.0 - light.b * t);
-                }
-            }
-
-            // Base tone: multiply-blend on the unlit remainder of the band so
-            // the shading darkens the original pixels rather than painting
-            // over them.
-            let shade = (base.a * (1.0 - weight) * config.gloss_strength * edge).clamp(0.0, 1.0);
-            if shade > 0.0 {
-                out[0] *= 1.0 - shade * (1.0 - base.r);
-                out[1] *= 1.0 - shade * (1.0 - base.g);
-                out[2] *= 1.0 - shade * (1.0 - base.b);
-            }
-
-            body.data[idx][0] = out[0].min(1.0) * dst_a;
-            body.data[idx][1] = out[1].min(1.0) * dst_a;
-            body.data[idx][2] = out[2].min(1.0) * dst_a;
+    for (idx, &glow) in field.iter().enumerate() {
+        if glow <= 0.0 {
+            continue;
         }
+        let dst_a = body.data[idx][3];
+        if dst_a <= 0.0 {
+            continue;
+        }
+        let t = (light.a * glow).clamp(0.0, 1.0);
+        if t <= 0.0 {
+            continue;
+        }
+        // Blend in straight alpha, then re-premultiply.
+        let dst_r = body.data[idx][0] / dst_a;
+        let dst_g = body.data[idx][1] / dst_a;
+        let dst_b = body.data[idx][2] / dst_a;
+        let out_r = 1.0 - (1.0 - dst_r) * (1.0 - light.r * t);
+        let out_g = 1.0 - (1.0 - dst_g) * (1.0 - light.g * t);
+        let out_b = 1.0 - (1.0 - dst_b) * (1.0 - light.b * t);
+        body.data[idx][0] = out_r.min(1.0) * dst_a;
+        body.data[idx][1] = out_g.min(1.0) * dst_a;
+        body.data[idx][2] = out_b.min(1.0) * dst_a;
     }
     Ok(())
 }
