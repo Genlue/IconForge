@@ -1,6 +1,7 @@
 import type { GlossConfig, HqRenderConfig } from "../../types/domain";
 import { HqPanelShape } from "../../types/domain";
 import { ColorField } from "./ColorField";
+import { GlossSection } from "./GlossSection";
 import { RangeField } from "./RangeField";
 import { SegmentedControl } from "./SegmentedControl";
 
@@ -207,62 +208,9 @@ export function HqRenderSection(props: HqRenderSectionProps): JSX.Element {
         </div>
       </div>
 
-      <div className="field">
+      <div className="flex flex-col gap-2.5">
         <span className="field__label font-medium text-[var(--text-primary)]">边缘光泽</span>
-        <div className="field__controls justify-end">
-          <input
-            type="checkbox"
-            checked={gloss.enabled}
-            aria-label="启用边缘光泽"
-            onChange={(e) => onGlossChange({ enabled: e.target.checked })}
-          />
-        </div>
-      </div>
-      <div className={`flex flex-col gap-2.5${gloss.enabled ? "" : " pointer-events-none opacity-40"}`}>
-        <RangeField
-          id="hq-edge-gloss-width"
-          label="边缘宽度"
-          value={gloss.width}
-          min={1}
-          max={16}
-          step={0.5}
-          onChange={(width) => onGlossChange({ width })}
-        />
-        <RangeField
-          id="hq-edge-gloss-strength"
-          label="光泽强度"
-          value={gloss.strength}
-          min={0}
-          max={1}
-          step={0.05}
-          onChange={(strength) => onGlossChange({ strength })}
-        />
-        <RangeField
-          id="hq-edge-gloss-feather"
-          label="内边缘羽化"
-          value={gloss.featherBlur}
-          min={0}
-          max={32}
-          step={1}
-          onChange={(featherBlur) => onGlossChange({ featherBlur })}
-        />
-        <ColorField
-          id="hq-edge-gloss-light"
-          label="高光"
-          value={gloss.lightColor}
-          pickTarget="glossLight"
-          onChange={(lightColor) => onGlossChange({ lightColor })}
-        />
-        <ColorField
-          id="hq-edge-gloss-base"
-          label="边缘基底色"
-          value={gloss.baseColor}
-          pickTarget="glossBase"
-          onChange={(baseColor) => onGlossChange({ baseColor })}
-        />
-        <p className="hint">
-          羽化值使光泽向内平滑过渡；沿边缘的一圈基底色叠加方向性高光，右下角高光向末端渐隐。
-        </p>
+        <GlossSection value={gloss} onChange={onGlossChange} />
       </div>
     </div>
   );

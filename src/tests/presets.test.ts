@@ -1,34 +1,55 @@
 import { describe, it, expect } from "vitest";
 import { DEFAULT_RENDER_CONFIG } from "../constants/defaults";
-import { BUILT_IN_PRESETS, getPresetById } from "../constants/presets";
+import { BUILT_IN_PRESETS, DEFAULT_PRESET_ID, getPresetById } from "../constants/presets";
 
 describe("presets", () => {
-  it("should include the collapsed preset collection", () => {
+  it("should expose the three built-in presets", () => {
     expect(
       BUILT_IN_PRESETS.map((p) => p.id),
-    ).toEqual([
-      "hq-render",
-      "glass",
-      "macos-classic-rounded",
-      "macos-gloss-dark",
-      "ios-squircle",
-      "minimal-glyph",
-    ]);
+    ).toEqual(["macos27", "hq-render", "blank"]);
+    expect(DEFAULT_PRESET_ID).toBe("macos27");
+    expect(getPresetById(DEFAULT_PRESET_ID)).toBeDefined();
   });
 
-  it("should find preset by id", () => {
-    const preset = getPresetById("macos-classic-rounded");
+  it("macOS27 preset keeps the tuned squircle and rim light", () => {
+    const preset = getPresetById("macos27");
     expect(preset).toBeDefined();
-    expect(preset?.name).toBe("扁平圆角矩形");
-    expect(preset?.config.foregroundOffsetX).toBe(0);
-    expect(preset?.config.foregroundOffsetY).toBe(0);
+    expect(preset?.name).toBe("macOS27 风格");
+    expect(preset?.config.shape).toBe("Squircle");
+    expect(preset?.config.cornerRadius).toBe(56);
+    expect(preset?.config.squircleExponent).toBe(4.5);
+    expect(preset?.config.backplateType).toBe("None");
     expect(preset?.config.canvasInset).toBe(0);
+    expect(preset?.config.gloss).toEqual({
+      enabled: true,
+      width: 1,
+      strength: 1,
+      lightColor: "#FFFFFFFF",
+      topStrength: 0.8,
+      bottomStrength: 0.6,
+      topDecay: 25,
+      bottomDecay: 10,
+      angleDegrees: 0,
+    });
+  });
+
+  it("blank preset turns everything off", () => {
+    const preset = getPresetById("blank");
+    expect(preset).toBeDefined();
+    expect(preset?.name).toBe("空白");
+    expect(preset?.config.shape).toBe("Rectangle");
+    expect(preset?.config.cornerRadius).toBe(0);
+    expect(preset?.config.backplateType).toBe("None");
     expect(preset?.config.outerShadow.enabled).toBe(false);
-    expect(preset?.config.outerShadow.offsetX).toBe(0);
-    expect(preset?.config.outerShadow.offsetY).toBe(0);
-    expect(preset?.config.outerShadow.blurRadius).toBe(0);
-    expect(preset?.config.outerShadow.spread).toBe(0);
     expect(preset?.config.stroke.width).toBe(0);
+    expect(preset?.config.gloss.enabled).toBe(false);
+    expect(preset?.config.hqRender.enabled).toBe(false);
+    expect(preset?.config.autoCutout.enabled).toBe(false);
+    expect(preset?.config.sourceSaturationPercent).toBe(100);
+    expect(preset?.config.foregroundScalePercent).toBe(100);
+    expect(preset?.config.foregroundOpacityPercent).toBe(100);
+    expect(preset?.config.canvasInset).toBe(0);
+    expect(preset?.config.contentScalePercent).toBe(100);
   });
 
   it("should use centered foreground offsets by default", () => {
@@ -39,25 +60,18 @@ describe("presets", () => {
     expect(DEFAULT_RENDER_CONFIG.stroke.width).toBe(0);
   });
 
-  it.each(["macos-gloss-dark"])(
-    "should use the tuned macOS gloss values for %s",
-    (presetId) => {
-      const preset = getPresetById(presetId);
-      expect(preset?.config.cornerRadius).toBe(57);
-      expect(preset?.config.gloss).toEqual({
-        enabled: true,
-        width: 2,
-        strength: 1,
-        lightColor: "#C8C8C8CC",
-        baseColor: "#454545FF",
-        featherBlur: 0,
-      });
-    },
-  );
-
   it("removed presets are gone", () => {
-    expect(getPresetById("macos-gloss-light")).toBeUndefined();
-    expect(getPresetById("neon-depth")).toBeUndefined();
+    for (const id of [
+      "macos-classic-rounded",
+      "macos-gloss-dark",
+      "ios-squircle",
+      "minimal-glyph",
+      "glass",
+      "macos-gloss-light",
+      "neon-depth",
+    ]) {
+      expect(getPresetById(id)).toBeUndefined();
+    }
   });
 
   it("should return undefined for unknown id", () => {

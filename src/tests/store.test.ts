@@ -41,7 +41,7 @@ function makeConfig(): ItemConfig {
     eraserStrokes: [],
     eraserSize: 16,
     eraserHardness: 50,
-    activePresetId: "macos-classic-rounded",
+    activePresetId: "macos27",
   };
 }
 

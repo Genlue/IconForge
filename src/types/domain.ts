@@ -50,13 +50,26 @@ export interface StrokeConfig {
   color: string;
 }
 
+/**
+ * Edge gloss: a rim light that hugs the shape boundary and fades inwards,
+ * modulated by two soft bands along a rotatable light axis.
+ */
 export interface GlossConfig {
   enabled: boolean;
+  /** Rim falloff distance in px. */
   width: number;
   strength: number;
   lightColor: string;
-  baseColor: string;
-  featherBlur: number;
+  /** Intensity of the band on the lit side of the light axis. */
+  topStrength: number;
+  /** Intensity of the band on the opposite side. */
+  bottomStrength: number;
+  /** How far the lit band reaches from the light side, in px. */
+  topDecay: number;
+  /** How far the opposite band reaches, in px. */
+  bottomDecay: number;
+  /** Rotation of the light axis in degrees (0 = light from the top). */
+  angleDegrees: number;
 }
 
 export interface AutoCutoutConfig {
@@ -87,17 +100,6 @@ export interface HqRenderConfig {
   shadowMode: HqShadowMode;
 }
 
-export interface GlassRenderConfig {
-  enabled: boolean;
-  colorRetention: number;
-  bevelRadius: number;
-  normalStrength: number;
-  specularStrength: number;
-  fresnelStrength: number;
-  aoStrength: number;
-  contrastStrength: number;
-}
-
 export interface RenderConfig {
   foregroundScalePercent: number;
   foregroundFit: ForegroundFit;
@@ -118,9 +120,10 @@ export interface RenderConfig {
   outerShadow: OuterShadowConfig;
   stroke: StrokeConfig;
   gloss: GlossConfig;
+  /** Saturation of the imported source image, in percent. 0 = grayscale. */
+  sourceSaturationPercent: number;
   autoCutout: AutoCutoutConfig;
   hqRender: HqRenderConfig;
-  glassRender: GlassRenderConfig;
 }
 
 export interface InputItem {
@@ -185,8 +188,7 @@ export type ColorPickTarget =
   | "gradientEnd"
   | "shadow"
   | "stroke"
-  | "glossLight"
-  | "glossBase";
+  | "glossLight";
 
 export type PreviewTool = "none" | "brush" | "eraser" | "eyedropper" | "magic-wand" | "source-eraser";
 

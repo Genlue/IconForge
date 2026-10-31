@@ -13,11 +13,9 @@ import { BrushSection } from "./BrushSection";
 import { GlossSection } from "./GlossSection";
 import { SourceProcessingSection } from "./SourceProcessingSection";
 import { HqRenderSection } from "./HqRenderSection";
-import { GlassSection } from "./GlassSection";
 import { DEFAULT_RENDER_CONFIG, DEFAULT_UPSCALE_CONFIG } from "../../constants/defaults";
 
 const HQ_PRESET_IDS = new Set(["hq-render"]);
-const GLASS_PRESET_IDS = new Set(["glass"]);
 
 export function ParameterPanel(): JSX.Element {
   const selectedItemId = useIconForgeStore((s) => s.selectedItemId);
@@ -40,12 +38,10 @@ const applyPreset = useIconForgeStore((s) => s.applyPreset);
   const activePresetId = itemConfig?.activePresetId ?? null;
   const hasSelection = selectedItemId !== null && itemConfig !== undefined;
   const isHqPreset = HQ_PRESET_IDS.has(activePresetId ?? "");
-  const isGlassPreset = GLASS_PRESET_IDS.has(activePresetId ?? "");
-  // Stay visible while the item is in HQ/glass mode even after the user tweaks
-  // a parameter (which clears activePresetId); only leaving for another preset
+  // Stay visible while the item is in HQ mode even after the user tweaks a
+  // parameter (which clears activePresetId); only leaving for another preset
   // turns the adaptive renderer off.
-  const glassActive = isGlassPreset || renderConfig.glassRender.enabled;
-  const hqActive = (isHqPreset || renderConfig.hqRender.enabled) && !glassActive;
+  const hqActive = isHqPreset || renderConfig.hqRender.enabled;
 
   return (
     <aside className="pane-inspector">
@@ -95,17 +91,10 @@ const applyPreset = useIconForgeStore((s) => s.applyPreset);
         <SourceProcessingSection
           cutout={renderConfig.autoCutout}
           onCutoutChange={(autoCutout) => updateRenderConfig({ autoCutout: { ...renderConfig.autoCutout, ...autoCutout } })}
+          saturation={renderConfig.sourceSaturationPercent}
+          onSaturationChange={(sourceSaturationPercent) => updateRenderConfig({ sourceSaturationPercent })}
           disabled={!hasSelection}
         />
-
-        {glassActive && (
-          <CollapsibleSection title="玻璃质感参数">
-            <GlassSection
-              value={renderConfig.glassRender}
-              onChange={(patch) => updateRenderConfig({ glassRender: { ...renderConfig.glassRender, ...patch } })}
-            />
-          </CollapsibleSection>
-        )}
 
         {hqActive && (
           <CollapsibleSection title="高质量渲染参数">

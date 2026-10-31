@@ -22,7 +22,7 @@ import type {
   ApplyToLnkResponse,
 } from "../types/commands";
 import { DEFAULT_RENDER_CONFIG, DEFAULT_UPSCALE_CONFIG } from "../constants/defaults";
-import { getPresetById } from "../constants/presets";
+import { DEFAULT_PRESET_ID, getPresetById } from "../constants/presets";
 import { commands } from "../lib/tauri";
 import { normalizeInvokeError } from "../types/errors";
 
@@ -35,21 +35,34 @@ function loadCustomPresets(): PresetDefinition[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    // Migrate presets saved before the gloss base color replaced the dark edge:
-    // drop the obsolete darkColor and default the new baseColor to gray.
+    // Migrate presets saved by older versions: the glass renderer is gone and
+    // the edge gloss became a distance-field rim light, so drop the obsolete
+    // blocks and fill in whatever the current config expects.
     return parsed.map((preset) => {
-      const gloss = preset?.config?.gloss;
-      if (!gloss || typeof gloss !== "object") return preset;
-      const next = { ...gloss };
-      if (next.baseColor === undefined || next.baseColor === null) {
-        next.baseColor = DEFAULT_RENDER_CONFIG.gloss.baseColor;
+      const config = preset?.config;
+      if (!config || typeof config !== "object") return preset;
+      const next: Record<string, unknown> = { ...config };
+      delete next.glassRender;
+      if (
+        next.sourceSaturationPercent === undefined ||
+        next.sourceSaturationPercent === null
+      ) {
+        next.sourceSaturationPercent = DEFAULT_RENDER_CONFIG.sourceSaturationPercent;
       }
-      if ("darkColor" in next) {
-        delete next.darkColor;
+      const gloss = next.gloss;
+      if (gloss && typeof gloss === "object") {
+        const glossNext: Record<string, unknown> = { ...(gloss as Record<string, unknown>) };
+        delete glossNext.darkColor;
+        delete glossNext.baseColor;
+        delete glossNext.featherBlur;
+        for (const [key, value] of Object.entries(DEFAULT_RENDER_CONFIG.gloss)) {
+          if (glossNext[key] === undefined || glossNext[key] === null) glossNext[key] = value;
+        }
+        next.gloss = glossNext;
       }
       return {
         ...preset,
-        config: { ...preset.config, gloss: next },
+        config: next,
       };
     });
   } catch {
@@ -309,15 +322,14 @@ export const useIconForgeStore = create<IconForgeState>((set, get) => ({
           activePresetId: null,
         };
       }
-      if (target === "glossLight" || target === "glossBase") {
-        const key = target === "glossLight" ? "lightColor" : "baseColor";
+      if (target === "glossLight") {
         return {
           ...config,
           renderConfig: {
             ...config.renderConfig,
             gloss: {
               ...config.renderConfig.gloss,
-              [key]: withAlpha(config.renderConfig.gloss[key]),
+              lightColor: withAlpha(config.renderConfig.gloss.lightColor),
             },
           },
           activePresetId: null,
@@ -615,8 +627,9 @@ async function exportItemsAsIco(
 }
 
 function createDefaultItemConfig(): ItemConfig {
+  const preset = getPresetById(DEFAULT_PRESET_ID);
   return {
-    renderConfig: cloneRenderConfig(DEFAULT_RENDER_CONFIG),
+    renderConfig: cloneRenderConfig(preset?.config ?? DEFAULT_RENDER_CONFIG),
     upscaleConfig: { ...DEFAULT_UPSCALE_CONFIG },
     brushStrokes: [],
     brushColor: "#FF3B30FF",
@@ -628,7 +641,7 @@ function createDefaultItemConfig(): ItemConfig {
     eraserStrokes: [],
     eraserSize: 16,
     eraserHardness: 50,
-    activePresetId: "macos-classic-rounded",
+    activePresetId: preset?.id ?? null,
   };
 }
 
@@ -640,7 +653,6 @@ function cloneRenderConfig(config: RenderConfig): RenderConfig {
     gloss: { ...config.gloss },
     autoCutout: { ...config.autoCutout },
     hqRender: { ...config.hqRender },
-    glassRender: { ...config.glassRender },
   };
 }
 

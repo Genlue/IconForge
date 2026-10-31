@@ -1,16 +1,5 @@
 import { IconShape, BackplateType, ForegroundFit, HqPanelShape } from "../types/domain";
-import type { GlassRenderConfig, HqRenderConfig, RenderConfig, UpscaleConfig } from "../types/domain";
-
-export const DEFAULT_GLASS_RENDER_CONFIG: Readonly<GlassRenderConfig> = {
-  enabled: false,
-  colorRetention: 0.08,
-  bevelRadius: 0.12,
-  normalStrength: 1,
-  specularStrength: 0.4,
-  fresnelStrength: 0.35,
-  aoStrength: 0.55,
-  contrastStrength: 0,
-};
+import type { HqRenderConfig, RenderConfig, UpscaleConfig } from "../types/domain";
 
 export const DEFAULT_HQ_RENDER_CONFIG: Readonly<HqRenderConfig> = {
   enabled: false,
@@ -65,19 +54,22 @@ export const DEFAULT_RENDER_CONFIG: Readonly<RenderConfig> = {
   },
   gloss: {
     enabled: false,
-    width: 3,
-    strength: 0.7,
+    width: 3.5,
+    strength: 1,
     lightColor: "#FFFFFFFF",
-    baseColor: "#808080FF",
-    featherBlur: 0,
+    topStrength: 0.42,
+    bottomStrength: 0.35,
+    topDecay: 38,
+    bottomDecay: 18,
+    angleDegrees: 0,
   },
   autoCutout: {
     enabled: false,
     tolerance: 20,
     feather: 8,
   },
+  sourceSaturationPercent: 100,
   hqRender: { ...DEFAULT_HQ_RENDER_CONFIG },
-  glassRender: { ...DEFAULT_GLASS_RENDER_CONFIG },
 };
 
 export const DEFAULT_UPSCALE_CONFIG: Readonly<UpscaleConfig> = {
