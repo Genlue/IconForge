@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <title>IconForge</title>
+    <!-- 自有样式先于 GlassDesign 注入（install() 在运行期追加 <style>）。
+         所以这里的规则一律带两段选择器，用特异性压过库的默认值，不靠顺序。 -->
+    <link rel="stylesheet" href="./app.css" />
+    <style>
+      /* 库只管控件；高度链归页面自己。少了这三行，滚动会落到 window 上。 */
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+      }
+      body {
+        background: var(--surface-content);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 窗口级脚本：普通 script，必须在 wasm 之前跑。
+         bridge.js 定义 window.__iconforge（红绿灯、拖放、窗口状态）；
+         shell.js 写 data-shell="host"。少引任何一个，对应功能会静默失效。 -->
+    <script src="./bridge.js"></script>
+    <script src="./shell.js"></script>
+    <script type="module">
+      // wasm-bindgen --target web 的产物，文件名取自 lib name（iconforge_ui）。
+      import init from "./pkg/iconforge_ui.js";
+      await init();
+    </script>
+  </body>
+</html>

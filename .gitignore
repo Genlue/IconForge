@@ -6,9 +6,11 @@ yarn-error.log*
 
 # Build output
 dist/
+ui/dist/
 build/
 
 # Rust / Tauri
+target/
 src-tauri/target/
 src-tauri/debug/
 

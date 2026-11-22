@@ -1,6 +1,6 @@
 [package]
 name = "iconforge"
-version = "2.2.0"
+version = "2.3.0"
 description = "IconForge - Icon customization tool"
 authors = []
 edition = "2021"
@@ -33,6 +33,10 @@ base64 = "0.22"
 tempfile = "3"
 parking_lot = "0.12"
 lru = "0.12"
+iconforge-domain = { workspace = true }
+# 上游仓库：https://github.com/Genlue/GlassDesign
+# 只钉 tag，不跟 branch：branch 随时可能编译不过（见 GlassDesign/docs/05-接入手册.md）。
+glass-design-host = { git = "https://github.com/Genlue/GlassDesign", tag = "v0.10.0" }
 windows = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_Graphics_Gdi",
@@ -50,14 +54,3 @@ windows = { version = "0.61", features = [
 
 [dev-dependencies]
 tempfile = "3"
-
-[profile.dev]
-debug = "line-tables-only"
-
-[profile.dev.package."*"]
-debug = false
-
-[profile.release]
-strip = true
-lto = true
-codegen-units = 1

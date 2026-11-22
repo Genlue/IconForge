@@ -1,0 +1,9 @@
+[package]
+name = "iconforge-domain"
+version.workspace = true
+edition.workspace = true
+description = "IconForge 的 IPC 数据模型：宿主与 wasm 前端共用同一份契约"
+license = "MIT"
+
+[dependencies]
+serde = { workspace = true }

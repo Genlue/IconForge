@@ -1,0 +1,865 @@
+/* ==========================================================================
+   IconForge · 自有样式
+   —— 只写 GlassDesign 没有的那部分：三栏网格、画布、来源行、检查器密度。
+      颜色、间距、圆角、字号一律用令牌，不写死像素色值。
+
+   特异性约定：凡是覆盖库内规则，选择器至少两段（`.if-x .c-y`），
+   因为库的样式是运行期注入的 <style>，在 <link> 之后。
+   ========================================================================== */
+
+/* --------------------------------------------------------------- 根布局 */
+
+.if-layout {
+  --if-inspector-w: 336px;
+  --if-status-h: 30px;
+  --if-checker: rgb(0 0 0 / 0.05);
+
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  grid-template-columns: var(--nav-w) minmax(0, 1fr) var(--if-inspector-w);
+  grid-template-rows: var(--toolbar-h) minmax(0, 1fr) var(--if-status-h);
+  grid-template-areas:
+    "toolbar toolbar toolbar"
+    "nav main inspector"
+    "status status status";
+  overflow: hidden;
+  background: var(--surface-content);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--fs-13);
+}
+
+[data-theme="dark"] .if-layout {
+  --if-checker: rgb(255 255 255 / 0.07);
+}
+
+/* --------------------------------------------------------------- 工具栏 */
+
+.if-toolbar-slot {
+  grid-area: toolbar;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  /* 玻璃胶囊背后要有东西可折：一条极淡的竖向渐变就够了，
+     不做「壁纸」——这是工具，不是展示页。 */
+  background: linear-gradient(180deg, #fbfbfd 0%, #eff1f6 100%);
+  box-shadow: inset 0 -0.5px 0 var(--line);
+}
+
+[data-theme="dark"] .if-toolbar-slot {
+  background: linear-gradient(180deg, #1c1c20 0%, #131316 100%);
+}
+
+.if-toolbar-slot .c-topbar {
+  position: relative;
+  inset: auto;
+  height: 100%;
+}
+
+.if-subtitle {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--fs-12);
+  font-weight: 400;
+  color: var(--text-tertiary);
+  letter-spacing: var(--tracking-body);
+}
+
+.if-subtitle::before {
+  content: "·";
+  margin-right: var(--s-3);
+  opacity: 0.55;
+}
+
+/* 胶囊里的按钮必须跟着胶囊走成同心圆角。
+   `Size::Sm` 会把 --ctl-r 覆盖成 --r-xs（6px），装在 34px 的胶囊里就是
+   「外圆内方」—— 圆角差一档，看起来像两个控件硬塞在一起。
+   改成 28px 高的正圆胶囊：34 - 28 = 6，上下各 3px，正好等于胶囊的横向内边距，
+   内外半径差恒为 3px，视觉上是一层壳套一层壳。 */
+.if-toolbar-slot .c-capsule .c-btn {
+  --ctl-h: 28px;
+  --ctl-r: var(--r-pill);
+  --ctl-pad: var(--s-6);
+}
+
+.if-spacer {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+}
+
+/* --------------------------------------------------------------- 窗格 */
+
+.if-pane {
+  min-height: 0;
+  min-width: 0;
+}
+
+.if-sidebar {
+  grid-area: nav;
+  display: flex;
+  flex-direction: column;
+}
+
+.if-pane__head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  height: 38px;
+  padding: 0 var(--s-4) 0 var(--s-6);
+  box-shadow: inset 0 -0.5px 0 var(--line-soft);
+}
+
+.if-pane__title {
+  font-size: var(--fs-11);
+  font-weight: 600;
+  letter-spacing: var(--tracking-section);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.if-count {
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: var(--surface-control);
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.if-list {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  padding: var(--s-2) var(--s-3) var(--s-6);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.if-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-4);
+  padding: 0 var(--s-6);
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: var(--fs-11);
+  line-height: 1.7;
+}
+
+.if-source {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-4);
+  padding: 5px 4px 5px var(--s-3);
+  border-radius: var(--r-sm);
+  color: var(--text-primary);
+  transition: background-color var(--dur-1) var(--ease-out);
+}
+
+.if-source:hover {
+  background: var(--surface-hover);
+}
+
+.if-source--active,
+.if-source--active:hover {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.if-source__thumb {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  object-fit: contain;
+  background: var(--surface-well);
+}
+
+.if-source__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.if-source__name {
+  font-size: var(--fs-13);
+  line-height: 1.25;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.if-source__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.if-source--active .if-source__meta {
+  color: color-mix(in srgb, var(--text-on-accent) 80%, transparent);
+}
+
+.if-source__kind {
+  padding: 0 4px;
+  border-radius: 3px;
+  border: 0.5px solid currentColor;
+  font-size: 9px;
+  line-height: 1.3;
+  opacity: 0.8;
+}
+
+.if-source__warn {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--warning);
+  color: #1d1d1f;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 12px;
+  text-align: center;
+}
+
+.if-source__remove {
+  opacity: 0;
+  color: inherit;
+}
+
+.if-source:hover .if-source__remove,
+.if-source--active .if-source__remove {
+  opacity: 0.9;
+}
+
+/* --------------------------------------------------------------- 画布 */
+
+.if-stage {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-5);
+  padding: var(--s-7) var(--s-8);
+  background: var(--surface-content);
+  overflow: hidden;
+}
+
+.if-canvas-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+}
+
+.if-canvas {
+  position: relative;
+  height: min(420px, 100%);
+  aspect-ratio: 1 / 1;
+  max-width: 100%;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  box-shadow: 0 0 0 0.5px var(--line), var(--shadow-card);
+}
+
+.if-checker {
+  position: absolute;
+  inset: 0;
+  background-color: var(--surface-content);
+  background-image:
+    linear-gradient(45deg, var(--if-checker) 25%, transparent 25%, transparent 75%, var(--if-checker) 75%),
+    linear-gradient(45deg, var(--if-checker) 25%, transparent 25%, transparent 75%, var(--if-checker) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
+}
+
+.if-canvas__surface {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.if-canvas__ants {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.if-canvas__busy {
+  position: absolute;
+  right: var(--s-4);
+  bottom: var(--s-4);
+  padding: 3px var(--s-4);
+  border-radius: var(--r-pill);
+  background: var(--surface-elevated);
+  box-shadow: 0 0 0 0.5px var(--line), var(--shadow-card);
+}
+
+.if-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3) var(--s-6);
+  font-size: var(--fs-11);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.if-meta__accent {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.if-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-4);
+  width: min(520px, 84%);
+  height: min(360px, 74%);
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--r-xl);
+  color: var(--text-tertiary);
+  transition:
+    border-color var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out),
+    color var(--dur-2) var(--ease-out);
+}
+
+.if-drop--active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.if-drop__title {
+  margin: 0;
+  font-size: var(--fs-13);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.if-drop--active .if-drop__title {
+  color: var(--accent);
+}
+
+.if-drop__hint {
+  margin: 0;
+  font-size: var(--fs-11);
+}
+
+/* --------------------------------------------------------------- 检查器 */
+
+.if-inspector {
+  grid-area: inspector;
+}
+
+.if-inspector .c-inspector__head {
+  padding: var(--s-5) var(--s-5) var(--s-3);
+}
+
+.if-inspector .c-inspector__tabs .c-seg {
+  display: flex;
+  width: 100%;
+}
+
+.if-inspector .c-inspector__tabs .c-seg__opt {
+  flex: 1;
+  justify-content: center;
+}
+
+.if-inspector .c-inspector__body {
+  padding: 0 var(--s-5) var(--s-7);
+}
+
+/* 检查器里的行去掉左右内边距：外层 body 已经给过，
+   再加一层会让 336px 的栏里只剩 270px 可用。 */
+.if-inspector .c-row {
+  padding-left: 0;
+  padding-right: 0;
+  gap: var(--s-4);
+  min-height: 32px;
+}
+
+.if-inspector .c-row__label {
+  font-size: var(--fs-12);
+}
+
+.if-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-2) 0 var(--s-5);
+}
+
+.if-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+.if-group--off {
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+.if-slider {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.if-number {
+  flex: none;
+  width: 62px;
+}
+
+.if-number .c-numberfield {
+  width: 100%;
+}
+
+.if-unit {
+  flex: none;
+  width: 12px;
+  font-size: var(--fs-11);
+  color: var(--text-tertiary);
+}
+
+.if-alpha {
+  flex: none;
+  min-width: 32px;
+  text-align: right;
+  font-size: var(--fs-11);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.if-seg {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.if-seg .c-seg {
+  display: flex;
+  width: 100%;
+}
+
+.if-seg .c-seg__opt {
+  flex: 1;
+  justify-content: center;
+}
+
+.if-hint {
+  margin: 0 0 var(--s-2);
+  font-size: var(--fs-11);
+  line-height: 1.55;
+  color: var(--text-tertiary);
+}
+
+.if-row-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  font-size: var(--fs-11);
+  color: var(--text-secondary);
+}
+
+.if-block > .c-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.if-btn-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-3);
+}
+
+.if-btn-pair > .c-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.if-keys {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  font-size: var(--fs-11);
+  color: var(--text-secondary);
+}
+
+.if-key {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.if-key kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--surface-control);
+  border: 0.5px solid var(--line);
+  color: var(--text-primary);
+}
+
+/* --------------------------------------------------------------- 预设 */
+
+.if-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.if-preset {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: var(--r-sm);
+  padding-right: var(--s-2);
+  transition: background-color var(--dur-1) var(--ease-out);
+}
+
+.if-preset:hover {
+  background: var(--surface-hover);
+}
+
+.if-preset--active,
+.if-preset--active:hover {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.if-preset__main {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 var(--s-3);
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: var(--fs-12);
+  text-align: left;
+  cursor: default;
+}
+
+.if-preset__name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.if-preset__badge {
+  flex: none;
+  padding: 0 5px;
+  border: 0.5px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  font-size: 9px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+
+.if-preset--active .if-preset__badge {
+  border-color: currentColor;
+  color: inherit;
+  opacity: 0.75;
+}
+
+.if-preset--active .c-iconbtn {
+  color: var(--text-on-accent);
+}
+
+.if-preset__edit {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  padding: var(--s-2);
+}
+
+.if-preset__edit .c-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* --------------------------------------------------------------- 状态栏 */
+
+.if-status {
+  grid-area: status;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.if-status .c-statusbar {
+  height: 100%;
+}
+
+/* --------------------------------------------------------------- 原图编辑 */
+
+.if-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-content);
+  color: var(--text-primary);
+}
+
+.if-editor__bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-6);
+  box-shadow: inset 0 -0.5px 0 var(--line);
+}
+
+.if-editor__title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.if-editor__name {
+  font-size: var(--fs-13);
+  font-weight: 600;
+}
+
+.if-editor__sub {
+  font-size: var(--fs-11);
+  color: var(--text-tertiary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.if-editor__params {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(186px, 1fr));
+  gap: 0 var(--s-6);
+  padding: var(--s-2) var(--s-6);
+  box-shadow: inset 0 -0.5px 0 var(--line-soft);
+}
+
+.if-editor__param {
+  min-width: 0;
+}
+
+/* 编辑器顶栏的六个参数是「并排的一排小仪表」，不是检查器里的长表单：
+   标签压到控件上方，滑杆才拿得到整列宽度。横排时标签会和上一个数值粘在一起。 */
+.if-editor__param .c-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  min-height: 0;
+  padding: var(--s-2) 0;
+}
+
+.if-editor__param .c-row__label {
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+
+.if-editor__param .c-row__control--wide {
+  max-width: none;
+}
+
+.if-editor__param .c-row {
+  padding-left: 0;
+  padding-right: 0;
+  gap: var(--s-3);
+}
+
+.if-editor__param-label {
+  font-size: var(--fs-12);
+  color: var(--text-primary);
+}
+
+.if-editor__param--toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  align-self: end;
+  padding-bottom: var(--s-5);
+}
+
+.if-editor__stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-7);
+  overflow: auto;
+}
+
+.if-canvas--editor {
+  height: auto;
+  width: auto;
+  overflow: visible;
+  box-shadow: 0 0 0 0.5px var(--line), var(--shadow-card);
+}
+
+.if-canvas--editor .if-editor__canvas {
+  position: relative;
+  inset: auto;
+  display: block;
+  touch-action: none;
+}
+
+.if-canvas--editor .if-canvas__ants {
+  width: 100%;
+  height: 100%;
+}
+
+.if-editor__hint {
+  flex: none;
+  padding: var(--s-3) var(--s-6);
+  font-size: var(--fs-11);
+  color: var(--text-secondary);
+  text-align: center;
+  box-shadow: inset 0 0.5px 0 var(--line);
+}
+
+/* --------------------------------------------------------------- 对话框内容 */
+
+.if-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  margin: var(--s-5) 0 var(--s-2);
+}
+
+.if-settings .c-row {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.if-settings__about {
+  margin: 0;
+  padding-top: var(--s-3);
+  font-size: var(--fs-11);
+  color: var(--text-quaternary);
+  letter-spacing: var(--tracking-caption);
+}
+
+.if-settings__effects {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding-top: var(--s-3);
+  box-shadow: inset 0 0.5px 0 var(--line-soft);
+}
+
+.if-results {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 340px;
+  overflow: hidden auto;
+  margin: var(--s-5) 0 var(--s-4);
+}
+
+.if-result {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-xs);
+  background: var(--surface-well);
+}
+
+.if-result--warn {
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+}
+
+.if-result__label {
+  font-size: 10px;
+  letter-spacing: var(--tracking-caption);
+  color: var(--text-secondary);
+}
+
+.if-result__path {
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  line-height: 1.45;
+  color: var(--text-primary);
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.if-error {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--if-status-h) + var(--s-7));
+  transform: translateX(-50%);
+  z-index: 60;
+  width: min(560px, calc(100vw - 48px));
+}
+
+.if-error__detail {
+  margin: var(--s-2) 0 0;
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-xs);
+  background: var(--surface-well);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* --------------------------------------------------------------- 浮层浓度 */
+
+/* 对话框可能压在任何一张图上。默认涂层（0.3）会把底下的图标主色透上来，
+   变成一块粉色玻璃 —— 读文字之前先要跟颜色打架。
+   抬到 0.92：保留模糊与边缘高光，但不再被内容染色。 */
+.c-dialog.c-glass-sheet,
+.c-sheet.c-glass-sheet {
+  --lg-coating: 0.92;
+}
+
+/* --------------------------------------------------------------- 窄窗口 */
+
+@media (max-width: 1120px) {
+  .if-layout {
+    --if-inspector-w: 304px;
+  }
+}

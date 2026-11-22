@@ -1,0 +1,31 @@
+[workspace]
+resolver = "2"
+members = ["crates/domain", "ui", "src-tauri"]
+
+[workspace.package]
+version = "2.3.0"
+edition = "2021"
+
+[workspace.dependencies]
+iconforge-domain = { path = "crates/domain" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# 宿主是图像处理重活，保持默认 opt-level=3；只有 wasm 前端压体积。
+# 开发档：wasm 在 opt-level=0 下慢到拖不动滑杆，这里抬到 1；
+# 依赖用 2（它们几乎不变，编一次就缓存住）。
+[profile.dev]
+opt-level = 1
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+opt-level = 2
+debug = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.release.package.iconforge-ui]
+opt-level = "s"

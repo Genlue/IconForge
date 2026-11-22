@@ -1,0 +1,31 @@
+[package]
+name = "iconforge-ui"
+version.workspace = true
+edition.workspace = true
+description = "IconForge 前端：Leptos 0.8 (CSR) + GlassDesign"
+
+[lib]
+name = "iconforge_ui"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# 三个都必须直接声明：`#[component]` / `view!` 展开成 `::leptos::…`，
+# `#[wasm_bindgen]` 展开成 `::wasm_bindgen::…`，库的 re-export 替代不了。
+# 版本写 caret，别写 `=0.8.x`：glass-design 也用 caret，锁死会各拿一份 leptos。
+leptos = { version = "0.8", features = ["csr"] }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+# 上游仓库：https://github.com/Genlue/GlassDesign（契约版本见 skill 与 CHANGELOG）
+glass-design = { git = "https://github.com/Genlue/GlassDesign", tag = "v0.10.0" }
+iconforge-domain = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+js-sys = "0.3"
+console_error_panic_hook = "0.1"
+web-sys = { version = "0.3", features = [
+  "Window", "Document", "Element", "HtmlElement", "Node", "DomRect",
+  "HtmlCanvasElement", "CanvasRenderingContext2d", "HtmlImageElement", "ImageData",
+  "HtmlInputElement", "Storage", "CssStyleDeclaration", "DomTokenList",
+  "Event", "EventTarget", "CustomEvent", "KeyboardEvent", "PointerEvent", "MouseEvent",
+  "FocusEvent", "MediaQueryList",
+] }

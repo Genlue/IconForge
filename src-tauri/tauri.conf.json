@@ -1,29 +1,32 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicedoc/tauri-conf-schema/refs/heads/main/schema.json",
   "productName": "IconForge",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "identifier": "com.iconforge.app",
   "build": {
-    "frontendDist": "../dist",
-    "devUrl": "http://localhost:1420",
-    "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
+    "frontendDist": "../ui/dist",
+    "beforeDevCommand": "npm run dev:ui",
+    "beforeBuildCommand": "npm run build:ui"
   },
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "IconForge",
-        "width": 1180,
-        "height": 820,
-        "minWidth": 960,
-        "minHeight": 700,
+        "width": 1240,
+        "height": 860,
+        "minWidth": 1040,
+        "minHeight": 640,
         "decorations": false,
-        "center": true
+        "transparent": false,
+        "center": true,
+        "backgroundColor": "#1e1e20"
       }
     ],
     "security": {
       "csp": null
-    }
+    },
+    "withGlobalTauri": true
   },
   "bundle": {
     "active": true,
